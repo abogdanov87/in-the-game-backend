@@ -22,7 +22,7 @@ DATABASES = {
     }
 }
 
-BASE_URL = 'http://www.in-the-game.ru'
+BASE_URL = 'https://www.in-the-game.ru'
 LOGIN_FORM_URL = BASE_URL + '/admin/json/api-auth/login/'
 HOME_FORM_URL = BASE_URL + '/#/'
 
