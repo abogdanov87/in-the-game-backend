@@ -1,5 +1,5 @@
 """
-WSGI config for 4paws project.
+WSGI config for IN-THE-GAME project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 

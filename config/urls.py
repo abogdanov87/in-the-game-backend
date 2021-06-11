@@ -18,7 +18,7 @@ from django.urls import path
 from django.conf.urls import url
 from django.conf.urls import include
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
-from catalogs import token
+from common import token
 from django.contrib.auth import views as auth_views
 from django.views.generic.base import RedirectView, TemplateView
 from django.conf import settings
@@ -54,10 +54,8 @@ urlpatterns = [
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),
     path('djrichtextfield/', include('djrichtextfield.urls')),
-    path('', include('catalogs.urls', namespace='catalogs')),
+    path('', include('tournaments.urls', namespace='tournaments')),
     path('', include('common.urls', namespace='common')),
-    path('', include('feedbacks.urls', namespace='feedback')),
-    path('', include('articles.urls', namespace='article')),
     url(r'^$', TemplateView.as_view(template_name='index.html'), name='index'),
 ]
 

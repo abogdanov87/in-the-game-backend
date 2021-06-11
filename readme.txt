@@ -8,7 +8,7 @@
 3. Connect to prod server via Terminal:
   3.1. ssh u1352366@37.140.192.209 (password - X3T_h_eX)
   3.2. source djangoenv/bin/activate
-  3.3. cd www/4paws.io/mrlapkins
+  3.3. cd www/IN-THE-GAME.io/mrlapkins
 4. Pull the code from Github:
   4.1. git pull
 5. If there are new migrations you must run them first:
@@ -16,4 +16,4 @@
 6. Update static files:
   6.1. python manage.py collectstatic
 7. Reload app on server by creating blank file in root folder of the site:
-  7.1. /www/4paws.io/.restart-app
+  7.1. /www/IN-THE-GAME.io/.restart-app

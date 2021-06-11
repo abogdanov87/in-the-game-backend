@@ -12,9 +12,7 @@ class MyUserAdmin(UserAdmin):
     list_display = (
         'id', 
         'username', 
-        'last_name', 
-        'first_name',
-        'middle_name',
+        'email',
         'avatar',
     )
     list_display_links = ('username',)
@@ -24,9 +22,7 @@ class MyUserAdmin(UserAdmin):
             _('Личные данные'),
             {
                 'fields': (
-                    'last_name',
-                    'first_name',
-                    'middle_name',
+                    'email',
                     'avatar',
                 ),
             },

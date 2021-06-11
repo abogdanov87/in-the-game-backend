@@ -11,24 +11,9 @@ class User(AbstractUser):
         CustomUser
     """
 
-    first_name = models.CharField(
-        _('Имя'),
-        max_length=30,
-        blank=True, null=True,
-    )
-    last_name = models.CharField(
-        _('Фамилия'),
-        max_length=30,
-        blank=True, null=True,
-    )
-    middle_name = models.CharField(
-        _('Отчество'),
-        max_length=30,
-        blank=True, null=True,
-    )
     email = models.EmailField(
         _('Адрес электронной почты'),
-        blank=True, null=True,
+        blank=False, null=False,
         unique=True,
     )
     avatar = ThumbnailerImageField(

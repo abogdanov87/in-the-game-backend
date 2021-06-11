@@ -114,7 +114,7 @@ class MailAPIView(APIView):
         user_instance.password_change_date = password_date
         user_instance.save()
 
-        subject = 'Код для входа на 4Paws'
+        subject = 'Код для входа на IN-THE-GAME'
         html_message = render_to_string(
             'registration_msg_russian.html', 
             { 

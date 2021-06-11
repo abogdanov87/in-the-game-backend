@@ -3,9 +3,9 @@ from .base import *
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    '37.140.192.209',
-    '4paws.io',
-    'www.4paws.io',
+    '37.140.192.51',
+    'in-the-game.ru',
+    'www.in-the-game.ru',
 ]
 
 MIDDLEWARE += [
@@ -15,16 +15,16 @@ MIDDLEWARE += [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'u1352366_default',
-        'USER': 'u1352366_default',
-        'PASSWORD': 'X3T_h_eX',
+        'NAME': 'u1344503_default',
+        'USER': 'u1344503_default',
+        'PASSWORD': 'N_7Q2iDd',
         'HOST': 'localhost',
     }
 }
 
-BASE_URL = 'https://www.4paws.io'
+BASE_URL = 'http://www.in-the-game.ru'
 LOGIN_FORM_URL = BASE_URL + '/admin/json/api-auth/login/'
-HOME_FORM_URL = BASE_URL + '/#/catalogs/'
+HOME_FORM_URL = BASE_URL + '/#/'
 
 LOGOUT_REDIRECT_URL = LOGIN_FORM_URL
 LOGIN_REDIRECT_URL = LOGIN_FORM_URL
