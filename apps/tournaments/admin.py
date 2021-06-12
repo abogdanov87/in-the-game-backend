@@ -10,7 +10,15 @@ from .models import (
     Match,
     Stage,
     Participant,
+    Result,
+    Forecast,
 )
+
+
+class ResultInline(admin.TabularInline):
+    model = Result
+    extra = 0
+    max_num = 1
 
 
 @admin.register(BaseTournament)
@@ -96,7 +104,7 @@ class MatchAdmin(admin.ModelAdmin):
         'status',
     ]
     inlines = [
-       
+       ResultInline,
     ]
     list_display = ('base_tournament', 'stage', 'team_home', 'team_away',)
     list_display_links = ('base_tournament', 'stage', 'team_home', 'team_away',)
@@ -128,6 +136,25 @@ class ParticipantAdmin(admin.ModelAdmin):
         'tournament',
         'admin',
         'active',
+    ]
+    inlines = [
+       
+    ]
+    list_display = ('user', 'tournament',)
+    list_display_links = ('user', 'tournament',)
+    list_filter = ()
+
+
+@admin.register(Forecast)
+class ForecastAdmin(admin.ModelAdmin):
+    model = Forecast
+    fields = [
+        'user',
+        'tournament',
+        'forecast_type',
+        'match',
+        'score_home',
+        'score_away',
     ]
     inlines = [
        

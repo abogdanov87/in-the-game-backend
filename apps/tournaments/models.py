@@ -1,12 +1,10 @@
 import os
 from django.db import models
-import datetime
+from datetime import datetime
 from django.utils import timezone
 from django.conf import settings
 from easy_thumbnails.fields import ThumbnailerImageField
 from django.apps import apps
-from simple_history.models import HistoricalRecords
-from djrichtextfield.models import RichTextField
 
 from django.utils.translation import gettext_lazy as _
 
@@ -310,9 +308,9 @@ class Match(models.Model):
         related_name='team_away_match',
     )
     start_date = models.DateTimeField(
-        _('Дата и время начала'),
-        default=timezone.datetime.now,
-    ),
+        _('Дата'),
+        default=timezone.datetime(year=1970, month=1, day=1),
+    )
     place = models.CharField(
         _('Место проведения'),
         max_length=128,
@@ -338,3 +336,97 @@ class Match(models.Model):
             self.team_home.title,
             self.team_away.title,
         )
+
+
+class Result(models.Model):
+    """
+        Результат
+    """
+    RESULT_TYPES = (
+        ('full time', 'Игра'),
+        ('first half', 'Первый тайм'),
+        ('second half', 'Второй тайм'),
+    )
+    result_type = models.CharField(
+        _('Тип'),
+        choices=RESULT_TYPES,
+        max_length=32,
+        blank=False, null=False,
+        default='full time',
+    )
+    match = models.ForeignKey(
+        Match,
+        on_delete=models.PROTECT,
+        blank=False, null=False,
+        verbose_name=_('Матч'),
+        related_name='match_result',
+    )
+    score_home = models.IntegerField(
+        _('Домашняя команда'),
+        blank=False, null=False,
+        default=0,
+    )
+    score_away = models.IntegerField(
+        _('Выездная команда'),
+        blank=False, null=False,
+        default=0,
+    )
+
+    class Meta:
+        db_table = 'result'
+        verbose_name = _('Результат')
+        verbose_name_plural = _('Результаты')
+
+
+class Forecast(models.Model):
+    """
+        Прогноз
+    """
+    RESULT_TYPES = (
+        ('full time', 'Игра'),
+        ('first half', 'Первый тайм'),
+        ('second half', 'Второй тайм'),
+    )
+    forecast_type = models.CharField(
+        _('Тип'),
+        choices=RESULT_TYPES,
+        max_length=32,
+        blank=False, null=False,
+        default='full time',
+    )
+    match = models.ForeignKey(
+        Match,
+        on_delete=models.PROTECT,
+        blank=False, null=False,
+        verbose_name=_('Матч'),
+        related_name='match_forecast',
+    )
+    tournament = models.ForeignKey(
+        Tournament,
+        on_delete=models.PROTECT,
+        blank=False, null=False,
+        verbose_name=_('Турнир'),
+        related_name='tournament_forecast',
+    )
+    score_home = models.IntegerField(
+        _('Домашняя команда'),
+        blank=False, null=False,
+        default=0,
+    )
+    score_away = models.IntegerField(
+        _('Выездная команда'),
+        blank=False, null=False,
+        default=0,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        blank=False, null=False,
+        verbose_name=_('Пользователь'),
+        related_name='user_forecast',
+    )
+
+    class Meta:
+        db_table = 'forecast'
+        verbose_name = _('Прогноз')
+        verbose_name_plural = _('Прогнозы')
