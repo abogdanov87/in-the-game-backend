@@ -100,9 +100,7 @@ class MailAPIView(APIView):
 
         user_instance = None
         try:
-            import pdb; pdb.set_trace()
             user_instance = User.objects.get(is_active=True, email=email)
-            
         except:
             user_instance = User(
                 is_superuser=False,
