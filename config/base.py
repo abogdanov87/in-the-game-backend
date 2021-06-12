@@ -222,7 +222,7 @@ EMAIL_PORT = 465
 
 # Optional SMTP authentication information for EMAIL_HOST.
 EMAIL_HOST_USER = 'team@in-the-game.ru'
-EMAIL_HOST_PASSWORD = 'mN1iF1lV6adP8x'
+EMAIL_HOST_PASSWORD = 'N_7Q2iDd'
 SERVER_EMAIL = EMAIL_HOST_USER
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
@@ -231,7 +231,7 @@ EMAIL_USE_SSL = True
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
