@@ -106,9 +106,10 @@ class MatchAdmin(admin.ModelAdmin):
     inlines = [
        ResultInline,
     ]
-    list_display = ('base_tournament', 'stage', 'team_home', 'team_away',)
-    list_display_links = ('base_tournament', 'stage', 'team_home', 'team_away',)
-    list_filter = ()
+    list_display = ('display_title',)
+    list_display_links = ('display_title',)
+    list_filter = ('status',)
+    ordering = ('start_date',)
 
 
 @admin.register(Stage)
@@ -159,6 +160,7 @@ class ForecastAdmin(admin.ModelAdmin):
     inlines = [
        
     ]
-    list_display = ('user', 'tournament',)
-    list_display_links = ('user', 'tournament',)
-    list_filter = ()
+    list_display = ('display_title',)
+    list_display_links = ('display_title',)
+    list_filter = ('tournament__title', 'user__username',)
+    ordering = ('match__start_date',)

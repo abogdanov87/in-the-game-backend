@@ -329,6 +329,14 @@ class Match(models.Model):
         verbose_name = _('Матч')
         verbose_name_plural = _('Матчи')
 
+    def display_title(self):
+        return '{} / {} / {} - {}'.format(
+            self.base_tournament.title, 
+            self.start_date.strftime("%d.%m.%Y %H:%M"),
+            self.team_home.title,
+            self.team_away.title,
+        )
+
     def __str__(self):
         return '{} / {} / {} - {}'.format(
             self.base_tournament.title, 
@@ -430,3 +438,15 @@ class Forecast(models.Model):
         db_table = 'forecast'
         verbose_name = _('Прогноз')
         verbose_name_plural = _('Прогнозы')
+
+    def display_title(self):    
+        return '{} / {} / {} - {} / ({}) {}:{}'.format(
+            self.tournament.title, 
+            self.user.username,
+            self.match.team_home.title,
+            self.match.team_away.title,
+            self.forecast_type,
+            self.score_home,
+            self.score_away,
+        )
+        
