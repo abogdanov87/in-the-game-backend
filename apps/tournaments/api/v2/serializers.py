@@ -157,7 +157,7 @@ class MatchSerializer(serializers.ModelSerializer):
         match_time = obj.start_date.replace(tzinfo=None)
         now_time = timezone.now().replace(tzinfo=None)
         # import pdb; pdb.set_trace()
-        if (match_time - now_time).seconds / (60*60) > 1 and (match_time - now_time).days >= 0:
+        if (match_time - now_time).total_seconds() / (60*60) > 1:
             return []
         else:
             frcsts = Forecast.objects.filter(

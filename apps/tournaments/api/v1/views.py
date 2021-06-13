@@ -76,7 +76,7 @@ class ForecastListCreateAPIView(generics.ListCreateAPIView):
             match_time = match.start_date.replace(tzinfo=None)
             now_time = timezone.now().replace(tzinfo=None)
 
-            if (match_time - now_time).seconds / (60*60) > 1 and (match_time - now_time).days >= 0:
+            if (match_time - now_time).total_seconds() / (60*60) > 1:
                 forecast_inst.save()
                 return Response(ForecastSerializer(forecast_inst).data, status=status.HTTP_201_CREATED)
             else:
@@ -100,7 +100,7 @@ class ForecastUpdateAPIView(generics.UpdateAPIView):
             match_time = match.start_date.replace(tzinfo=None)
             now_time = timezone.now().replace(tzinfo=None)
 
-            if (match_time - now_time).seconds / (60*60) > 1 and (match_time - now_time).days >= 0:
+            if (match_time - now_time).total_seconds() / (60*60) > 1:
                 forecast_inst.save()
                 return Response(ForecastSerializer(forecast_inst).data, status=status.HTTP_201_CREATED)
             else:
