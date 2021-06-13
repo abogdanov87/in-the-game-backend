@@ -58,8 +58,52 @@ class ForecastListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = ForecastSerializer
     permission_classes = [permissions.AllowAny]
 
+    def post(self, request, format=None):
+        try:
+            match = Match.objects.get(id=request.data['match'])
+            user = request.user
+            tournament = Tournament.objects.get(id=request.data['tournament'])
+
+            forecast_inst = Forecast(
+                forecast_type = request.data['forecast_type'],
+                tournament = tournament,
+                user = user,
+                match = match,
+                score_home = request.data['score_home'],
+                score_away = request.data['score_away'],
+            )
+
+            match_time = match.start_date.replace(tzinfo=None)
+            now_time = timezone.now().replace(tzinfo=None)
+
+            if (match_time - now_time).seconds / (60*60) > 1:
+                forecast_inst.save()
+                return Response(ForecastSerializer(forecast_inst).data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        except:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
 
 class ForecastUpdateAPIView(generics.UpdateAPIView):
     queryset = Forecast.objects.all()
     serializer_class = ForecastSerializer
     permission_classes = [permissions.AllowAny]
+
+    def patch(self, request, pk, format=None):
+        try:
+            forecast_inst = Forecast.objects.get(id=pk)
+            match = Match.objects.get(id=forecast_inst.match.id)
+            forecast_inst.score_home = request.data['score_home']
+            forecast_inst.score_away = request.data['score_away']
+
+            match_time = match.start_date.replace(tzinfo=None)
+            now_time = timezone.now().replace(tzinfo=None)
+
+            if (match_time - now_time).seconds / (60*60) > 1:
+                forecast_inst.save()
+                return Response(ForecastSerializer(forecast_inst).data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        except:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
