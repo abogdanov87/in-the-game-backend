@@ -28,6 +28,7 @@ from tournaments.models import (
 from .serializers import (
     BaseTournamentSerializer,
     TournamentSerializer,
+    TournamentShortSerializer,
     CountrySerializer,
     TeamSerializer,
     MatchSerializer,
@@ -35,6 +36,7 @@ from .serializers import (
     ParticipantSerializer,
     ResultSerializer,
     ForecastSerializer,
+    ForecastShortSerializer,
 )
 from common.api.v1.serializers import (
     UserSerializer,
@@ -44,6 +46,12 @@ from common.api.v1.serializers import (
 class TournamentRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
     queryset = Tournament.objects.all()
     serializer_class = TournamentSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class TournamentListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Tournament.objects.all()
+    serializer_class = TournamentShortSerializer
     permission_classes = [permissions.AllowAny]
 
 
@@ -57,6 +65,13 @@ class ForecastListCreateAPIView(generics.ListCreateAPIView):
     queryset = Forecast.objects.all()
     serializer_class = ForecastSerializer
     permission_classes = [permissions.AllowAny]
+
+    def get(self, request, format=None):
+        qs = Forecast.objects.filter(
+            user=request.user.id,
+            tournament=request.GET['tournament'],
+        )
+        return Response([ForecastShortSerializer(f).data for f in qs], status=status.HTTP_200_OK)
 
     def post(self, request, format=None):
         try:

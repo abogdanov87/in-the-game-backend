@@ -35,7 +35,22 @@ class BaseTournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer)
         return data
 
 
+class BaseTournamentShortSerializer(BulkSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = BaseTournament
+        list_serializer_class = BulkListSerializer
+        fields = (
+            'id',
+            'title',
+        )
+
+    def validate(self, data):
+        return data
+
+
 class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
+    base_tournament = BaseTournamentShortSerializer()
+
     class Meta:
         model = Tournament
         list_serializer_class = BulkListSerializer
@@ -60,20 +75,28 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
         return data
 
 
-class TeamSerializer(serializers.ModelSerializer):
+class TournamentShortSerializer(BulkSerializerMixin, serializers.ModelSerializer):
+    base_tournament = BaseTournamentShortSerializer()
+    participants = serializers.SerializerMethodField()
+
     class Meta:
-        model = Team
+        model = Tournament
+        list_serializer_class = BulkListSerializer
         fields = (
             'id',
-            'team_type',
-            'country',
+            'base_tournament',
             'title',
-            'town',
-            'short_title',
-            'abbreviation',
-            'badge',
+            'logo',
             'active',
+            'participants',
         )
+
+    def get_participants(self, obj):
+        qs = Participant.objects.filter(
+            tournament=obj.id,
+            active=True,
+        ).values('id').count()
+        return qs
 
     def validate(self, data):
         return data
@@ -94,6 +117,40 @@ class CountrySerializer(serializers.ModelSerializer):
         return data
 
 
+class CountryShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Country
+        fields = (
+            'id',
+            'title',
+            'abbreviation',
+        )
+
+    def validate(self, data):
+        return data
+
+
+class TeamSerializer(serializers.ModelSerializer):
+    country = CountrySerializer()
+
+    class Meta:
+        model = Team
+        fields = (
+            'id',
+            'team_type',
+            'country',
+            'title',
+            'town',
+            'short_title',
+            'abbreviation',
+            'badge',
+            'active',
+        )
+
+    def validate(self, data):
+        return data
+
+
 class StageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Stage
@@ -101,6 +158,20 @@ class StageSerializer(serializers.ModelSerializer):
             'id',
             'stage_type',
             'base_tournament',
+            'title',
+            'ordering',
+        )
+
+    def validate(self, data):
+        return data
+
+
+class StageShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Stage
+        fields = (
+            'id',
+            'stage_type',
             'title',
             'ordering',
         )
@@ -156,7 +227,7 @@ class MatchSerializer(serializers.ModelSerializer):
     def get_forecasts(self, obj):
         match_time = obj.start_date.replace(tzinfo=None)
         now_time = timezone.now().replace(tzinfo=None)
-        # import pdb; pdb.set_trace()
+        
         if (match_time - now_time).total_seconds() / (60*60) > 1:
             return []
         else:
@@ -179,43 +250,59 @@ class ParticipantSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'user',
-            'tournament',
             'admin',
             'active',
             'score',
         )
 
     def get_score(self, obj):
-        qs = Match.objects.filter(
-            match_forecast__forecast_type='full time',
+        # get list of tournaments that user joined
+        tournaments = Tournament.objects.filter(
             base_tournament=obj.tournament.base_tournament,
-            match_forecast__user=obj.user,
-            status='finished',
-            match_result__result_type='full time',
-        ).values(
-            'match_forecast__user',
-            'team_home',
-            'team_away',
-            'match_forecast__score_home',
-            'match_forecast__score_away',
-            'match_result__score_home',
-            'match_result__score_away',
-        )
-        score = 0
-        for q in qs:
-            if (q['match_forecast__score_home'] == q['match_result__score_home']) and (q['match_forecast__score_away'] == q['match_result__score_away']):
-                score = score + 3
-            elif (q['match_forecast__score_home'] - q['match_forecast__score_away']) == (q['match_result__score_home'] - q['match_result__score_away']) and (q['match_result__score_home'] != q['match_result__score_away']) and (sign(q['match_forecast__score_home']) == sign(q['match_result__score_home'])):
-                score = score + 2
-            elif sign(q['match_forecast__score_home'] - q['match_forecast__score_away']) == sign(q['match_result__score_home'] - q['match_result__score_away']):
-                score = score + 1
-            elif (q['match_result__score_home'] == q['match_result__score_away']) and (q['match_forecast__score_home'] == q['match_forecast__score_away']) and (q['match_result__score_home'] != q['match_forecast__score_home']):
-                score = score + 1
-            else:
-                score = score + 0
+            tournament_participant__user=obj.user,
+            active=True,
+        ).values('id').distinct()
+        
+        #calculate score for all tournaments
+        scores = []
+        for t in tournaments:
+            qs = Match.objects.filter(
+                match_forecast__tournament=t['id'],
+                match_forecast__forecast_type='full time',
+                base_tournament=obj.tournament.base_tournament,
+                match_forecast__user=obj.user,
+                status='finished',
+                match_result__result_type='full time',
+            ).values(
+                'match_forecast__tournament',
+                'match_forecast__user',
+                'team_home',
+                'team_away',
+                'match_forecast__score_home',
+                'match_forecast__score_away',
+                'match_result__score_home',
+                'match_result__score_away',
+            )
 
-        # import pdb; pdb.set_trace()
-        return score
+            score = 0
+            for q in qs:
+                if (q['match_forecast__score_home'] == q['match_result__score_home']) and (q['match_forecast__score_away'] == q['match_result__score_away']):
+                    score = score + 3
+                elif (q['match_forecast__score_home'] - q['match_forecast__score_away']) == (q['match_result__score_home'] - q['match_result__score_away']) and (q['match_result__score_home'] != q['match_result__score_away']) and (sign(q['match_forecast__score_home']) == sign(q['match_result__score_home'])):
+                    score = score + 2
+                elif sign(q['match_forecast__score_home'] - q['match_forecast__score_away']) == sign(q['match_result__score_home'] - q['match_result__score_away']):
+                    score = score + 1
+                elif (q['match_result__score_home'] == q['match_result__score_away']) and (q['match_forecast__score_home'] == q['match_forecast__score_away']) and (q['match_result__score_home'] != q['match_forecast__score_home']):
+                    score = score + 1
+                else:
+                    score = score + 0
+
+            scores += [{
+                'tournament': t['id'],
+                'score': score,
+            }]
+
+        return scores
 
     def validate(self, data):
         return data
@@ -231,6 +318,22 @@ class ForecastSerializer(BulkSerializerMixin, serializers.ModelSerializer):
             'id',
             'user',
             'tournament',
+            'forecast_type',
+            'match',
+            'score_home',
+            'score_away',
+        )
+
+    def validate(self, data):
+        return data
+
+
+class ForecastShortSerializer(BulkSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = Forecast
+        list_serializer_class = BulkListSerializer
+        fields = (
+            'id',
             'forecast_type',
             'match',
             'score_home',
