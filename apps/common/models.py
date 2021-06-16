@@ -121,7 +121,6 @@ class Mail(models.Model):
     email = models.EmailField(
         _('Адрес электронной почты'),
         blank=False, null=False,
-        unique=True,
     )
     sent_date = models.DateTimeField(
         _('Дата отправки'),

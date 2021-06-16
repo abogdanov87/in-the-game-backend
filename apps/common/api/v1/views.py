@@ -97,7 +97,7 @@ class MailAPIView(APIView):
         generated_pwd = '00000{0}'.format(random.randint(0, 999999))[-6:]
         email = request.data['email'].lower()
         username = email
-        password_date = datetime.datetime.now()
+        password_date = timezone.now()
 
         user_instance = None
         try:
@@ -134,18 +134,17 @@ class MailAPIView(APIView):
                 fail_silently = False,
                 html_message = html_message,
             )
-            # mail = Mail(
-            #     email=email,
-            #     code=generated_pwd,
-            #     sent_date=timezone.now(),
-            # )
-            # mail.save()
+            mail = Mail(
+                email=email,
+                code=generated_pwd,
+                sent_date=timezone.now(),
+            )
+            mail.save()
         except:
             return Response({
             'status': status.HTTP_400_BAD_REQUEST,
             'sent': False,
         })
-
         
         return Response({
             'status': status.HTTP_200_OK,
