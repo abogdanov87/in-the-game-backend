@@ -25,6 +25,7 @@ from transliterate import translit
 from common.models import (
     Param,
     User, 
+    Mail,
 )
 from .serializers import (
     ParamSerializer,
@@ -124,14 +125,27 @@ class MailAPIView(APIView):
         )
         plain_message = strip_tags(html_message)
         
-        send_mail(
-            subject = subject, 
-            message = plain_message, 
-            from_email = settings.EMAIL_HOST_USER,
-            recipient_list = [email],
-            fail_silently = False,
-            html_message = html_message,
-        )
+        try:
+            send_mail(
+                subject = subject, 
+                message = plain_message, 
+                from_email = settings.EMAIL_HOST_USER,
+                recipient_list = [email],
+                fail_silently = False,
+                html_message = html_message,
+            )
+            mail = Mail(
+                email=email,
+                code=generated_pwd,
+                sent_date=timezone.now(),
+            )
+            mail.save()
+        except:
+            return Response({
+            'status': status.HTTP_400_BAD_REQUEST,
+            'sent': False,
+        })
+
         
         return Response({
             'status': status.HTTP_200_OK,

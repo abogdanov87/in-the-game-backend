@@ -112,3 +112,32 @@ class Param(models.Model):
 
     def __str__(self):
         return '{} ({})'.format(self.name, self.entity.__str__)
+
+
+class Mail(models.Model):
+    """
+        Письмо
+    """
+    email = models.EmailField(
+        _('Адрес электронной почты'),
+        blank=False, null=False,
+        unique=True,
+    )
+    sent_date = models.DateTimeField(
+        _('Дата отправки'),
+        default=timezone.datetime(year=1970, month=1, day=1),
+    )
+    code = models.CharField(
+        _('Код'),
+        max_length=255,
+        blank=False, null=False,
+        default='',
+    )
+
+    class Meta:
+        db_table = 'mail'
+        verbose_name = _('Письмо')
+        verbose_name_plural = _('Письма')
+
+    def __str__(self):
+        return '{} ({})'.format(self.email, self.sent_date)
