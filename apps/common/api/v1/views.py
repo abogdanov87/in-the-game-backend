@@ -95,7 +95,7 @@ class MailAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
         generated_pwd = '00000{0}'.format(random.randint(0, 999999))[-6:]
-        email = request.data['email'].lower()
+        email = request.data['email'].lower().replace(' ', '')
         username = email
         password_date = timezone.now()
 
@@ -134,12 +134,12 @@ class MailAPIView(APIView):
                 fail_silently = False,
                 html_message = html_message,
             )
-            mail = Mail(
-                email=email,
-                code=generated_pwd,
-                sent_date=timezone.now(),
-            )
-            mail.save()
+            # mail = Mail(
+            #     email=email,
+            #     code=generated_pwd,
+            #     sent_date=timezone.now(),
+            # )
+            # mail.save()
         except:
             return Response({
             'status': status.HTTP_400_BAD_REQUEST,
@@ -158,10 +158,11 @@ class AuthAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
             try: 
-                email = request.data['email'].lower()
+                email = request.data['email'].lower().replace(' ', '')
+                code = request.data['code'].replace(' ', '')
                 password_date = datetime.datetime.now()
 
-                user_instance = authenticate(username=email, password=request.data['code'])
+                user_instance = authenticate(username=email, password=code)
                 if user_instance is not None:
                     delta = password_date.replace(tzinfo=None) - user_instance.password_change_date.replace(tzinfo=None)
                     if delta.seconds > 300:
