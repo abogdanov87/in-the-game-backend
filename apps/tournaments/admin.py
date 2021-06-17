@@ -162,5 +162,5 @@ class ForecastAdmin(admin.ModelAdmin):
     ]
     list_display = ('display_title',)
     list_display_links = ('display_title',)
-    list_filter = ('tournament__title', 'user__username', 'match__status',)
+    list_filter = ('tournament__title', 'user__username', 'match__status', 'match__start_date')
     ordering = ('match__start_date',)
