@@ -202,7 +202,7 @@ class Stage(models.Model):
         verbose_name_plural = _('Стадии')
 
     def __str__(self):
-        return '{}'.format(self.title)
+        return '{} / {}'.format(self.base_tournament.title, self.title)
 
 
 class Team(models.Model):
@@ -450,3 +450,85 @@ class Forecast(models.Model):
             self.score_home,
             self.score_away,
         )
+
+
+class Rule(models.Model):
+    """
+        Правило 
+    """
+    RULE_TYPES = (
+        ('exact result', 'Точный результат матча'),
+        ('goals difference', 'Разница голов (кроме ничейного исхода)'),
+        ('match result', 'Исход матча (в том числе ничейный исход)'),
+        ('champion', 'Победитель турнира'),
+    )
+    rule_type = models.CharField(
+        _('Правило'),
+        choices=RULE_TYPES,
+        max_length=32,
+        blank=False, null=False,
+        default='match result',
+    )
+    tournament = models.ForeignKey(
+        Tournament,
+        on_delete=models.PROTECT,
+        blank=False, null=False,
+        verbose_name=_('Турнир'),
+        related_name='tournament_rules',
+    )
+    points = models.FloatField(
+        _('Очки'),
+        blank=False, null=False,
+        default=1.,
+    )
+    active = models.BooleanField(
+        _('Активный'),
+        blank=False, null=False,
+        default=True,
+    )
+
+    class Meta:
+        db_table = 'rule'
+        verbose_name = _('Правило')
+        verbose_name_plural = _('Правила')
+
+    def __str__(self):
+        return '{} - {}'.format(self.tournament.title, self.rule_type)
+
+
+class StageCoefficient(models.Model):
+    """
+        Коэффициент на стадии
+    """
+    tournament = models.ForeignKey(
+        Tournament,
+        on_delete=models.PROTECT,
+        blank=False, null=False,
+        verbose_name=_('Турнир'),
+        related_name='tournament_stage_coef',
+    )
+    stage = models.ForeignKey(
+        Stage,
+        on_delete=models.PROTECT,
+        blank=False, null=False,
+        verbose_name=_('Стадия'),
+        related_name='stage_stage_coef',
+    )
+    coefficient = models.FloatField(
+        _('Коэффициент'),
+        blank=False, null=False,
+        default=1.,
+    )
+    active = models.BooleanField(
+        _('Активный'),
+        blank=False, null=False,
+        default=True,
+    )
+
+    class Meta:
+        db_table = 'stage_coefficient'
+        verbose_name = _('Коэффициент на стадии')
+        verbose_name_plural = _('Коэффициенты на стадии')
+
+    def __str__(self):
+        return '{} / {}'.format(self.tournament.title, self.stage.title)

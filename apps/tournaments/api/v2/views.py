@@ -24,6 +24,11 @@ from tournaments.models import (
     Participant,
     Result,
     Forecast,
+    Rule,
+    StageCoefficient,
+)
+from common.models import (
+    User,
 )
 from .serializers import (
     BaseTournamentSerializer,
@@ -34,24 +39,65 @@ from .serializers import (
     MatchSerializer,
     StageSerializer,
     ParticipantSerializer,
+    ParticipantShortSerializer,
     ResultSerializer,
     ForecastSerializer,
     ForecastShortSerializer,
+    RuleSerializer,
+    StageCoefficientSerializer,
 )
 from common.api.v1.serializers import (
     UserSerializer,
+)
+from .filters import (
+    ParticipantFilter,
+)
+from common.api.v1.filters import (
+    UserFilter,
 )
 
 
 class TournamentRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
     queryset = Tournament.objects.all()
     serializer_class = TournamentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class TournamentListAPIView(generics.ListAPIView):
+    queryset = Tournament.objects.all()
+    serializer_class = TournamentShortSerializer
     permission_classes = [permissions.AllowAny]
 
 
-class TournamentListCreateAPIView(generics.ListCreateAPIView):
+class TournamentCreateAPIView(generics.CreateAPIView):
     queryset = Tournament.objects.all()
     serializer_class = TournamentShortSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class ParticipantListCreateUpdateAPIView(ListBulkCreateUpdateAPIView):
+    queryset = Participant.objects.all()
+    serializer_class = ParticipantShortSerializer
+    filterset_class = ParticipantFilter
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class RuleListCreateUpdateAPIView(ListBulkCreateUpdateAPIView):
+    queryset = Rule.objects.all()
+    serializer_class = RuleSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class StageCoefficientListCreateUpdateAPIView(ListBulkCreateUpdateAPIView):
+    queryset = StageCoefficient.objects.all()
+    serializer_class = StageCoefficientSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class UserListAPIView(generics.ListAPIView):
+    queryset = User.objects.all().order_by('username')[:5]
+    serializer_class = UserSerializer
+    filterset_class = UserFilter
     permission_classes = [permissions.AllowAny]
 
 

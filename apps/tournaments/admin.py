@@ -12,6 +12,8 @@ from .models import (
     Participant,
     Result,
     Forecast,
+    Rule,
+    StageCoefficient,
 )
 
 
@@ -19,6 +21,26 @@ class ResultInline(admin.TabularInline):
     model = Result
     extra = 0
     max_num = 1
+
+
+class ParticipantInline(admin.TabularInline):
+    model = Participant
+    extra = 0
+
+
+class StageInline(admin.TabularInline):
+    model = Stage
+    extra = 0
+
+
+class StageCoefficientInline(admin.TabularInline):
+    model = StageCoefficient
+    extra = 0
+
+
+class RuleInline(admin.TabularInline):
+    model = Rule
+    extra = 0
 
 
 @admin.register(BaseTournament)
@@ -29,7 +51,7 @@ class BaseTournamentAdmin(admin.ModelAdmin):
         'active',
     ]
     inlines = [
-       
+       StageInline,
     ]
     list_display = ('title',)
     list_display_links = ('title',)
@@ -46,7 +68,9 @@ class TournamentAdmin(admin.ModelAdmin):
         'active',
     ]
     inlines = [
-       
+       ParticipantInline,
+       StageCoefficientInline,
+       RuleInline,
     ]
     list_display = ('title',)
     list_display_links = ('title',)

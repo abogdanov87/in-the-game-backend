@@ -37,7 +37,32 @@ urlpatterns += [
     ),
     url(
         r'^api/v2/tournaments/$',
-        api_v2_views.TournamentListCreateAPIView.as_view(),
+        api_v2_views.TournamentListAPIView.as_view(),
+        name='list',
+    ),
+    url(
+        r'^api/v2/tournaments/$',
+        api_v2_views.TournamentCreateAPIView.as_view(),
+        name='create',
+    ),
+    url(
+        r'^api/v2/participants/$',
+        api_v2_views.ParticipantListCreateUpdateAPIView.as_view(),
+        name='create_update',
+    ),
+    url(
+        r'^api/v2/rules/$',
+        api_v2_views.RuleListCreateUpdateAPIView.as_view(),
+        name='create_update',
+    ),
+    url(
+        r'^api/v2/stage-coefficients/$',
+        api_v2_views.StageCoefficientListCreateUpdateAPIView.as_view(),
+        name='create_update',
+    ),
+    url(
+        r'^api/v2/users/$',
+        api_v2_views.UserListAPIView.as_view(),
         name='list',
     ),
     url(
