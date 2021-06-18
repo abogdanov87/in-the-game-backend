@@ -14,6 +14,7 @@ class MyUserAdmin(UserAdmin):
         'id', 
         'username', 
         'email',
+        'nickname',
         'avatar',
     )
     list_display_links = ('username',)
@@ -23,6 +24,7 @@ class MyUserAdmin(UserAdmin):
             _('Личные данные'),
             {
                 'fields': (
+                    'nickname',
                     'email',
                     'avatar',
                 ),

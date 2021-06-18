@@ -10,7 +10,11 @@ class User(AbstractUser):
     """
         CustomUser
     """
-
+    nickname = models.CharField(
+        _('Никнейм'),
+        max_length=255,
+        blank=True, null=True,
+    )
     email = models.EmailField(
         _('Адрес электронной почты'),
         blank=False, null=False,
