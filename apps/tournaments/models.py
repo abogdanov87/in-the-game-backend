@@ -436,6 +436,7 @@ class Forecast(models.Model):
 
     class Meta:
         db_table = 'forecast'
+        unique_together = ('forecast_type', 'match', 'tournament', 'user',)
         verbose_name = _('Прогноз')
         verbose_name_plural = _('Прогнозы')
 
@@ -449,4 +450,3 @@ class Forecast(models.Model):
             self.score_home,
             self.score_away,
         )
-        
