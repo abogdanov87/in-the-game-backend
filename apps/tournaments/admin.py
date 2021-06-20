@@ -64,7 +64,9 @@ class TournamentAdmin(admin.ModelAdmin):
     fields = [
         'base_tournament',
         'title',
+        'code,'
         'logo',
+        'open',
         'active',
     ]
     inlines = [
@@ -72,8 +74,8 @@ class TournamentAdmin(admin.ModelAdmin):
        StageCoefficientInline,
        RuleInline,
     ]
-    list_display = ('title',)
-    list_display_links = ('title',)
+    list_display = ('display_title',)
+    list_display_links = ('display_title',)
     list_filter = ()
 
 

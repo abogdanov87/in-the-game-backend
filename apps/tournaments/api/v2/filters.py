@@ -4,6 +4,7 @@ from django.db.models.functions import Lower
 from datetime import datetime
 from tournaments.models import (
     Participant, 
+    Match,
 )
 
 
@@ -15,3 +16,10 @@ class ParticipantFilter(filters.FilterSet):
     class Meta:
         model = Participant
         fields = ('active', 'tournament',)
+
+
+class MatchFilter(filters.FilterSet):
+
+    class Meta:
+        model = Match
+        fields = ('base_tournament',)

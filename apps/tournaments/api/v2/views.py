@@ -51,6 +51,7 @@ from common.api.v1.serializers import (
 )
 from .filters import (
     ParticipantFilter,
+    MatchFilter,
 )
 from common.api.v1.filters import (
     UserFilter,
@@ -98,19 +99,36 @@ class UserListAPIView(generics.ListAPIView):
     queryset = User.objects.all().order_by('username')[:5]
     serializer_class = UserSerializer
     filterset_class = UserFilter
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class MatchListAPIView(generics.ListAPIView):
     queryset = Match.objects.all()
     serializer_class = MatchSerializer
-    permission_classes = [permissions.AllowAny]
+    filterset_class = MatchFilter
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        matches = self.get_queryset()
+        response = []
+        for match in self.get_queryset():
+            f = Forecast.objects.filter(
+                match=match.id,
+                tournament=request.GET['tournament'],
+                user=request.user.id,
+            ).first()
+            response += [{
+                'match': MatchSerializer(match).data,
+                'forecast': ForecastShortSerializer(f).data,
+            }]
+
+        return Response(response)
 
 
 class ForecastListCreateAPIView(generics.ListCreateAPIView):
     queryset = Forecast.objects.all()
     serializer_class = ForecastSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):
         qs = Forecast.objects.filter(
@@ -149,7 +167,7 @@ class ForecastListCreateAPIView(generics.ListCreateAPIView):
 class ForecastUpdateAPIView(generics.UpdateAPIView):
     queryset = Forecast.objects.all()
     serializer_class = ForecastSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, pk, format=None):
         try:

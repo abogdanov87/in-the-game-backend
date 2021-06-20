@@ -307,64 +307,65 @@ class ParticipantSerializer(serializers.ModelSerializer):
         )
 
     def get_score(self, obj):
-        # get list of tournaments that user joined
-        tournaments = Tournament.objects.filter(
-            base_tournament=obj.tournament.base_tournament,
-            tournament_participant__user=obj.user,
-            active=True,
-        ).values('id').distinct()
-        
         #calculate score for all tournaments
         scores = []
-        for t in tournaments:
-            qs = Match.objects.filter(
-                match_forecast__tournament=t['id'],
-                match_forecast__forecast_type='full time',
-                base_tournament=obj.tournament.base_tournament,
-                match_forecast__user=obj.user,
-                status='finished',
-                match_result__result_type='full time',
-            ).values(
-                'match_forecast__tournament',
-                'match_forecast__user',
-                'team_home',
-                'team_away',
-                'match_forecast__score_home',
-                'match_forecast__score_away',
-                'match_result__score_home',
-                'match_result__score_away',
-                'stage',
-            )
+        qs = Match.objects.filter(
+            match_forecast__tournament=obj.tournament.id,
+            match_forecast__forecast_type='full time',
+            base_tournament=obj.tournament.base_tournament,
+            match_forecast__user=obj.user,
+            status='finished',
+            match_result__result_type='full time',
+        ).values(
+            'match_forecast__tournament',
+            'match_forecast__user',
+            'team_home',
+            'team_away',
+            'match_forecast__score_home',
+            'match_forecast__score_away',
+            'match_result__score_home',
+            'match_result__score_away',
+            'stage',
+        )
 
-            qs_rules = Rule.objects.filter(
-                active=True,
-                tournament=t['id'],
-            ).values('rule_type', 'points',)
-            rules = {q['rule_type']: q['points'] for q in qs_rules}
+        qs_rules = Rule.objects.filter(
+            active=True,
+            tournament=obj.tournament.id,
+        ).values('rule_type', 'points',)
+        rules = {q['rule_type']: q['points'] for q in qs_rules}
 
-            qs_coefficients = StageCoefficient.objects.filter(
-                active=True,
-                tournament=t['id'],
-            ).values('stage', 'coefficient')
-            coefficients = {q['stage']: q['coefficient'] for q in qs_coefficients}
-            
-            score = 0.
-            for q in qs:
-                if (q['match_forecast__score_home'] == q['match_result__score_home']) and (q['match_forecast__score_away'] == q['match_result__score_away']):
-                    score = score + (rules['exact result'] if 'exact result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
-                elif (q['match_forecast__score_home'] - q['match_forecast__score_away']) == (q['match_result__score_home'] - q['match_result__score_away']) and (q['match_result__score_home'] != q['match_result__score_away']) and (sign(q['match_forecast__score_home']) == sign(q['match_result__score_home'])):
-                    score = score + (rules['goals difference'] if 'goals difference' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
-                elif sign(q['match_forecast__score_home'] - q['match_forecast__score_away']) == sign(q['match_result__score_home'] - q['match_result__score_away']):
-                    score = score + (rules['match result'] if 'match result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
-                elif (q['match_result__score_home'] == q['match_result__score_away']) and (q['match_forecast__score_home'] == q['match_forecast__score_away']) and (q['match_result__score_home'] != q['match_forecast__score_home']):
-                    score = score + (rules['match result'] if 'match result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
-                else:
-                    score = score + 0
+        qs_coefficients = StageCoefficient.objects.filter(
+            active=True,
+            tournament=obj.tournament.id,
+        ).values('stage', 'coefficient')
+        coefficients = {q['stage']: q['coefficient'] for q in qs_coefficients}
+        
+        points = 0.
+        exact_result = 0
+        goals_difference = 0
+        match_result = 0
+        for q in qs:
+            if (q['match_forecast__score_home'] == q['match_result__score_home']) and (q['match_forecast__score_away'] == q['match_result__score_away']):
+                points = points + (rules['exact result'] if 'exact result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
+                exact_result = exact_result + 1
+            elif (q['match_forecast__score_home'] - q['match_forecast__score_away']) == (q['match_result__score_home'] - q['match_result__score_away']) and (q['match_result__score_home'] != q['match_result__score_away']) and (sign(q['match_forecast__score_home']) == sign(q['match_result__score_home'])):
+                points = points + (rules['goals difference'] if 'goals difference' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
+                goals_difference = goals_difference + 1
+            elif sign(q['match_forecast__score_home'] - q['match_forecast__score_away']) == sign(q['match_result__score_home'] - q['match_result__score_away']):
+                points = points + (rules['match result'] if 'match result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
+                match_result = match_result + 1
+            elif (q['match_result__score_home'] == q['match_result__score_away']) and (q['match_forecast__score_home'] == q['match_forecast__score_away']) and (q['match_result__score_home'] != q['match_forecast__score_home']):
+                points = points + (rules['match result'] if 'match result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
+                match_result = match_result + 1
+            else:
+                points = points + 0.
 
-            scores += [{
-                'tournament': t['id'],
-                'score': score,
-            }]
+        scores = {
+            'points': points,
+            'exact_result': exact_result,
+            'goals_difference': goals_difference,
+            'match_result': match_result,
+        }
 
         return scores
 
@@ -415,7 +416,6 @@ class ForecastShortSerializer(BulkSerializerMixin, serializers.ModelSerializer):
         fields = (
             'id',
             'forecast_type',
-            'match',
             'score_home',
             'score_away',
         )
