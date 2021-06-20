@@ -62,11 +62,23 @@ class Tournament(models.Model):
         blank=False, null=False,
         default='',
     )
+    code = models.CharField(
+        _('Код'),
+        max_length=32,
+        blank=False, null=False,
+        default='',
+        unique=True,
+    )
     logo = ThumbnailerImageField(
         _('Логотип'),
         upload_to ='logos/',
         blank=True, null=True,
         resize_source=dict(size=(128, 128), sharpen=True),
+    )
+    open = models.BooleanField(
+        _('Открытый'),
+        blank=False, null=False,
+        default=False,
     )
     active = models.BooleanField(
         _('Активный'),
@@ -78,6 +90,9 @@ class Tournament(models.Model):
         db_table = 'tournament'
         verbose_name = _('Турнир')
         verbose_name_plural = _('Турниры')
+
+    def display_title(self):
+        return '{} ({})'.format(self.title, self.code)
 
     def __str__(self):
         return '{}'.format(self.title)
