@@ -64,8 +64,6 @@ class TournamentAdmin(admin.ModelAdmin):
     fields = [
         'base_tournament',
         'title',
-        'code,'
-        'logo',
         'open',
         'active',
     ]
