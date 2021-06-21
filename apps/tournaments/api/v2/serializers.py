@@ -91,6 +91,7 @@ class BaseTournamentShortSerializer(BulkSerializerMixin, serializers.ModelSerial
 
 class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
     base_tournament = BaseTournamentShortSerializer()
+    # teams = serializers.SerializerMethodField()
 
     class Meta:
         model = Tournament
@@ -104,6 +105,7 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
             'tournament_participant',
             'tournament_stage_coef',
             'tournament_rules',
+            # 'teams',
         )
 
     def to_representation(self, instance):
@@ -121,6 +123,16 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
             many=True
         ).data
         return response
+
+    # def get_teams(self, obj):
+    #     qs = Match.objects.filter(
+    #         base_tournament=obj.base_tournament.id,
+    #     ).values(
+    #         'team_home__id',
+    #     ).distinct()
+    #     return [TeamSerializer(
+    #         Team.objects.get(id=q['team_home__id'])
+    #     ).data for q in qs]
 
     def validate(self, data):
         return data
