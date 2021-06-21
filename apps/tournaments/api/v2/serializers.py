@@ -38,7 +38,23 @@ class RuleSerializer(serializers.ModelSerializer):
         return data
 
 
+class StageShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Stage
+        fields = (
+            'id',
+            'stage_type',
+            'title',
+            'ordering',
+        )
+
+    def validate(self, data):
+        return data
+
+        
 class StageCoefficientSerializer(serializers.ModelSerializer):
+    stage = StageShortSerializer()
+
     class Meta:
         model = StageCoefficient
         fields = (
@@ -221,20 +237,6 @@ class StageSerializer(serializers.ModelSerializer):
             'id',
             'stage_type',
             'base_tournament',
-            'title',
-            'ordering',
-        )
-
-    def validate(self, data):
-        return data
-
-
-class StageShortSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Stage
-        fields = (
-            'id',
-            'stage_type',
             'title',
             'ordering',
         )
