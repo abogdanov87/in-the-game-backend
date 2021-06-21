@@ -136,12 +136,12 @@ class MailAPIView(APIView):
                 fail_silently = False,
                 html_message = html_message,
             )
-            # mail = Mail(
-            #     email=email,
-            #     code=generated_pwd,
-            #     sent_date=timezone.now(),
-            # )
-            # mail.save()
+            mail = Mail(
+                email=email,
+                code=generated_pwd,
+                sent_date=timezone.now(),
+            )
+            mail.save()
         except:
             return Response({
             'status': status.HTTP_400_BAD_REQUEST,
