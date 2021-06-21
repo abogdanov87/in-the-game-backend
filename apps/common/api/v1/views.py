@@ -97,7 +97,7 @@ class MailAPIView(APIView):
         generated_pwd = '00000{0}'.format(random.randint(0, 999999))[-6:]
         email = request.data['email'].lower().replace(' ', '')
         username = email
-        nickname = email.split('@').pop(0)
+        # nickname = email.split('@').pop(0)
         password_date = timezone.now()
 
         user_instance = None
@@ -110,7 +110,7 @@ class MailAPIView(APIView):
                 is_active=True,
                 username=username,
                 email=email,
-                nickname=nickname,
+                # nickname=nickname,
             )
 
         user_instance.set_password(generated_pwd)
@@ -136,12 +136,12 @@ class MailAPIView(APIView):
                 fail_silently = False,
                 html_message = html_message,
             )
-            # mail = Mail(
-            #     email=email,
-            #     code=generated_pwd,
-            #     sent_date=timezone.now(),
-            # )
-            # mail.save()
+            mail = Mail(
+                email=email,
+                code=generated_pwd,
+                sent_date=timezone.now(),
+            )
+            mail.save()
         except:
             return Response({
             'status': status.HTTP_400_BAD_REQUEST,
