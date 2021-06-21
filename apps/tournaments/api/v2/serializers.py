@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
+from django.db.models import Q, Max
 from rest_framework_bulk import BulkListSerializer, BulkSerializerMixin
 from tournaments.models import (
     BaseTournament,
@@ -51,7 +52,7 @@ class StageShortSerializer(serializers.ModelSerializer):
     def validate(self, data):
         return data
 
-        
+
 class StageCoefficientSerializer(serializers.ModelSerializer):
     stage = StageShortSerializer()
 
@@ -107,7 +108,7 @@ class BaseTournamentShortSerializer(BulkSerializerMixin, serializers.ModelSerial
 
 class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
     base_tournament = BaseTournamentShortSerializer()
-    # teams = serializers.SerializerMethodField()
+    teams = serializers.SerializerMethodField()
 
     class Meta:
         model = Tournament
@@ -121,7 +122,7 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
             'tournament_participant',
             'tournament_stage_coef',
             'tournament_rules',
-            # 'teams',
+            'teams',
         )
 
     def to_representation(self, instance):
@@ -140,15 +141,26 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
         ).data
         return response
 
-    # def get_teams(self, obj):
-    #     qs = Match.objects.filter(
-    #         base_tournament=obj.base_tournament.id,
-    #     ).values(
-    #         'team_home__id',
-    #     ).distinct()
-    #     return [TeamSerializer(
-    #         Team.objects.get(id=q['team_home__id'])
-    #     ).data for q in qs]
+    def get_teams(self, obj):
+        qs1 = Match.objects.filter(
+            base_tournament=obj.base_tournament.id,
+        ).annotate(
+            team_id=Max('team_home_id'),
+        ).values(
+            'team_id',
+        ).distinct()
+
+        qs2 = Match.objects.filter(
+            base_tournament=obj.base_tournament.id,
+        ).annotate(
+            team_id=Max('team_away_id'),
+        ).values(
+            'team_id',
+        ).distinct()
+
+        return [TeamSerializer(
+            Team.objects.get(id=q['team_id'])
+        ).data for q in qs1.union(qs2)]
 
     def validate(self, data):
         return data
@@ -261,8 +273,8 @@ class ResultSerializer(BulkSerializerMixin, serializers.ModelSerializer):
 
 
 class MatchSerializer(serializers.ModelSerializer):
-    team_home = TeamSerializer()
-    team_away = TeamSerializer()
+    # team_home = TeamSerializer()
+    # team_away = TeamSerializer()
     stage = StageSerializer()
     forecasts = serializers.SerializerMethodField()
 
@@ -404,7 +416,7 @@ class ParticipantShortSerializer(serializers.ModelSerializer):
 
 
 class ForecastSerializer(BulkSerializerMixin, serializers.ModelSerializer):
-    user = UserSerializer()
+    # user = UserSerializer()
 
     class Meta:
         model = Forecast
