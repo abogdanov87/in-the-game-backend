@@ -66,7 +66,7 @@ urlpatterns += [
         name='update',
     ),
     url(
-        r'^api/v2/forecasts//$',
+        r'^api/v2/forecasts/$',
         api_v2_views.ForecastListCreateAPIView.as_view(),
         name='create',
     ),
