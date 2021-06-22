@@ -423,7 +423,7 @@ class ParticipantShortSerializer(serializers.ModelSerializer):
 
 class ForecastSerializer(BulkSerializerMixin, serializers.ModelSerializer):
     # user = UserSerializer()
-    score = serializers.SerializerMethodField()
+    # score = serializers.SerializerMethodField()
 
     class Meta:
         model = Forecast
@@ -436,32 +436,32 @@ class ForecastSerializer(BulkSerializerMixin, serializers.ModelSerializer):
             'match',
             'score_home',
             'score_away',
-            'score',
+            # 'score',
         )
 
-    def get_score(self, obj):
-        #calculate score for all tournaments
-        qs = Match.objects.filter(
-            match_forecast__tournament=obj.tournament.id,
-            match_forecast__forecast_type='full time',
-            base_tournament=obj.tournament.base_tournament,
-            match_forecast__user=obj.user,
-            status='finished',
-            match_result__result_type='full time',
-            id=obj.match.id,
-        ).values(
-            'match_forecast__tournament',
-            'match_forecast__user',
-            'team_home',
-            'team_away',
-            'match_forecast__score_home',
-            'match_forecast__score_away',
-            'match_result__score_home',
-            'match_result__score_away',
-            'stage',
-        )
+    # def get_score(self, obj):
+    #     #calculate score for all tournaments
+    #     qs = Match.objects.filter(
+    #         match_forecast__tournament=obj.tournament.id,
+    #         match_forecast__forecast_type='full time',
+    #         base_tournament=obj.tournament.base_tournament,
+    #         match_forecast__user=obj.user,
+    #         status='finished',
+    #         match_result__result_type='full time',
+    #         id=obj.match.id,
+    #     ).values(
+    #         'match_forecast__tournament',
+    #         'match_forecast__user',
+    #         'team_home',
+    #         'team_away',
+    #         'match_forecast__score_home',
+    #         'match_forecast__score_away',
+    #         'match_result__score_home',
+    #         'match_result__score_away',
+    #         'stage',
+    #     )
 
-        return get_calc_score(qs, obj)
+    #     return get_calc_score(qs, obj)
 
     def validate(self, data):
         return data
