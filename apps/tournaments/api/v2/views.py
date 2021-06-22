@@ -37,6 +37,7 @@ from .serializers import (
     CountrySerializer,
     TeamSerializer,
     MatchSerializer,
+    MatchScoreSerializer,
     StageSerializer,
     ParticipantSerializer,
     ParticipantShortSerializer,
@@ -123,6 +124,12 @@ class MatchListAPIView(generics.ListAPIView):
             }]
 
         return Response(response)
+
+
+class MatchRetrieveAPIView(generics.RetrieveAPIView):
+    queryset = Match.objects.all()
+    serializer_class = MatchScoreSerializer
+    permission_classes = [permissions.AllowAny]
 
 
 class ForecastListCreateAPIView(generics.ListCreateAPIView):

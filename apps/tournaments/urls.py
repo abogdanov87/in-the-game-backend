@@ -33,7 +33,7 @@ urlpatterns += [
     url(
         r'^api/v2/tournament/(?P<pk>\d+)/$',
         api_v2_views.TournamentRetrieveUpdateAPIView.as_view(),
-        name='detail',
+        name='retrieve_and_update',
     ),
     url(
         r'^api/v2/tournaments/$',
@@ -46,21 +46,6 @@ urlpatterns += [
         name='create',
     ),
     url(
-        r'^api/v2/participants/$',
-        api_v2_views.ParticipantListCreateUpdateAPIView.as_view(),
-        name='create_update',
-    ),
-    url(
-        r'^api/v2/rules/$',
-        api_v2_views.RuleListCreateUpdateAPIView.as_view(),
-        name='create_update',
-    ),
-    url(
-        r'^api/v2/stage-coefficients/$',
-        api_v2_views.StageCoefficientListCreateUpdateAPIView.as_view(),
-        name='create_update',
-    ),
-    url(
         r'^api/v2/users/$',
         api_v2_views.UserListAPIView.as_view(),
         name='list',
@@ -68,16 +53,16 @@ urlpatterns += [
     url(
         r'^api/v2/matches/$',
         api_v2_views.MatchListAPIView.as_view(),
-        name='detail',
+        name='list',
     ),
-    url(
-        r'^api/v2/forecasts/$',
-        api_v2_views.ForecastListCreateAPIView.as_view(),
-        name='detail',
+     url(
+        r'^api/v2/match/(?P<pk>\d+)/$',
+        api_v2_views.MatchRetrieveAPIView.as_view(),
+        name='retrieve',
     ),
     url(
         r'^api/v2/forecast/(?P<pk>\d+)/$',
         api_v2_views.ForecastUpdateAPIView.as_view(),
-        name='detail',
+        name='update',
     ),
 ]

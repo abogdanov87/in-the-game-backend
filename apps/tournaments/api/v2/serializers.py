@@ -123,14 +123,14 @@ class BaseTournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer)
         fields = (
             'id',
             'title',
-            'stages',
+            'tournament_stage',
             'active',
         )
 
     def to_representation(self, instance):
         response = super().to_representation(instance)
-        response['stages'] = StageSerializer(
-            instance.stages,
+        response['tournament_stage'] = StageSerializer(
+            instance.tournament_stage,
             many=True
         ).data
         return response
@@ -153,7 +153,7 @@ class BaseTournamentShortSerializer(BulkSerializerMixin, serializers.ModelSerial
 
 
 class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
-    base_tournament = BaseTournamentShortSerializer()
+    base_tournament = BaseTournamentSerializer()
     teams = serializers.SerializerMethodField()
 
     class Meta:
@@ -319,11 +319,6 @@ class ResultSerializer(BulkSerializerMixin, serializers.ModelSerializer):
 
 
 class MatchSerializer(serializers.ModelSerializer):
-    # team_home = TeamSerializer()
-    # team_away = TeamSerializer()
-    stage = StageSerializer()
-    forecasts = serializers.SerializerMethodField()
-
     class Meta:
         model = Match
         fields = (
@@ -336,7 +331,6 @@ class MatchSerializer(serializers.ModelSerializer):
             'place',
             'status',
             'match_result',
-            'forecasts',
         )
 
     def to_representation(self, instance):
@@ -346,19 +340,6 @@ class MatchSerializer(serializers.ModelSerializer):
             many=True
         ).data
         return response
-
-    def get_forecasts(self, obj):
-        match_time = obj.start_date.replace(tzinfo=None)
-        now_time = timezone.now().replace(tzinfo=None)
-        
-        if (match_time - now_time).total_seconds() / (60*60) > 1:
-            return []
-        else:
-            frcsts = Forecast.objects.filter(
-                match=obj.id,
-                forecast_type='full time',
-            )
-            return [ForecastSerializer(f).data for f in frcsts]
 
     def validate(self, data):
         return data
@@ -422,9 +403,6 @@ class ParticipantShortSerializer(serializers.ModelSerializer):
 
 
 class ForecastSerializer(BulkSerializerMixin, serializers.ModelSerializer):
-    # user = UserSerializer()
-    # score = serializers.SerializerMethodField()
-
     class Meta:
         model = Forecast
         list_serializer_class = BulkListSerializer
@@ -436,32 +414,7 @@ class ForecastSerializer(BulkSerializerMixin, serializers.ModelSerializer):
             'match',
             'score_home',
             'score_away',
-            # 'score',
         )
-
-    # def get_score(self, obj):
-    #     #calculate score for all tournaments
-    #     qs = Match.objects.filter(
-    #         match_forecast__tournament=obj.tournament.id,
-    #         match_forecast__forecast_type='full time',
-    #         base_tournament=obj.tournament.base_tournament,
-    #         match_forecast__user=obj.user,
-    #         status='finished',
-    #         match_result__result_type='full time',
-    #         id=obj.match.id,
-    #     ).values(
-    #         'match_forecast__tournament',
-    #         'match_forecast__user',
-    #         'team_home',
-    #         'team_away',
-    #         'match_forecast__score_home',
-    #         'match_forecast__score_away',
-    #         'match_result__score_home',
-    #         'match_result__score_away',
-    #         'stage',
-    #     )
-
-    #     return get_calc_score(qs, obj)
 
     def validate(self, data):
         return data
@@ -477,6 +430,98 @@ class ForecastShortSerializer(BulkSerializerMixin, serializers.ModelSerializer):
             'score_home',
             'score_away',
         )
+
+    def validate(self, data):
+        return data
+
+
+class ForecastScoreSerializer(BulkSerializerMixin, serializers.ModelSerializer):
+    user = UserSerializer()
+    score = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Forecast
+        list_serializer_class = BulkListSerializer
+        fields = (
+            'id',
+            'user',
+            'tournament',
+            'forecast_type',
+            'match',
+            'score_home',
+            'score_away',
+            'score',
+        )
+
+    def get_score(self, obj):
+        #calculate score for all tournaments
+        qs = Match.objects.filter(
+            match_forecast__tournament=obj.tournament.id,
+            match_forecast__forecast_type='full time',
+            base_tournament=obj.tournament.base_tournament,
+            match_forecast__user=obj.user,
+            status='finished',
+            match_result__result_type='full time',
+            id=obj.match.id,
+        ).values(
+            'match_forecast__tournament',
+            'match_forecast__user',
+            'team_home',
+            'team_away',
+            'match_forecast__score_home',
+            'match_forecast__score_away',
+            'match_result__score_home',
+            'match_result__score_away',
+            'stage',
+        )
+
+        return get_calc_score(qs, obj)
+
+    def validate(self, data):
+        return data
+
+
+class MatchScoreSerializer(serializers.ModelSerializer):
+    team_home = TeamSerializer()
+    team_away = TeamSerializer()
+    stage = StageSerializer()
+    forecasts = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Match
+        fields = (
+            'id',
+            'base_tournament',
+            'stage',
+            'team_home',
+            'team_away',
+            'start_date',
+            'place',
+            'status',
+            'match_result',
+            'forecasts',
+        )
+
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        response['match_result'] = ResultSerializer(
+            instance.match_result,
+            many=True
+        ).data
+        return response
+
+    def get_forecasts(self, obj):
+        match_time = obj.start_date.replace(tzinfo=None)
+        now_time = timezone.now().replace(tzinfo=None)
+        
+        if (match_time - now_time).total_seconds() / (60*60) > 1:
+            return []
+        else:
+            frcsts = Forecast.objects.filter(
+                match=obj.id,
+                forecast_type='full time',
+            )
+            return [ForecastScoreSerializer(f).data for f in frcsts]
 
     def validate(self, data):
         return data
