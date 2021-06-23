@@ -14,6 +14,7 @@ from tournaments.models import (
     Forecast,
     Rule,
     StageCoefficient,
+    ForecastWinner,
 )
 from common.api.v1.serializers import (
     UserSerializer,
@@ -28,6 +29,12 @@ def get_calc_score(qs, obj):
         #calculate score for all tournaments
         scores = []
 
+        points = 0.
+        tournament_bonuses = 0.
+        exact_result = 0
+        goals_difference = 0
+        match_result = 0
+
         qs_rules = Rule.objects.filter(
             active=True,
             tournament=obj.tournament.id,
@@ -39,16 +46,23 @@ def get_calc_score(qs, obj):
             tournament=obj.tournament.id,
         ).values('stage', 'coefficient')
         coefficients = {q['stage']: q['coefficient'] for q in qs_coefficients}
+
+        if obj.tournament.base_tournament.winner:
+            try:
+                fw = ForecastWinner.objects.get(
+                    tournament=obj.tournament.id,
+                    user=obj.user.id,
+                )
+                if fw.team.id == obj.tournament.base_tournament.winner.id:
+                    tournament_bonuses = tournament_bonuses + (rules['winner'] if 'winner' in rules else 0.)
+            except:
+                pass
         
-        points = 0.
-        exact_result = 0
-        goals_difference = 0
-        match_result = 0
         for q in qs:
             if (q['match_forecast__score_home'] == q['match_result__score_home']) and (q['match_forecast__score_away'] == q['match_result__score_away']):
                 points = points + (rules['exact result'] if 'exact result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
                 exact_result = exact_result + 1
-            elif (q['match_forecast__score_home'] - q['match_forecast__score_away']) == (q['match_result__score_home'] - q['match_result__score_away']) and (q['match_result__score_home'] != q['match_result__score_away']) and (sign(q['match_forecast__score_home']) == sign(q['match_result__score_home'])):
+            elif (q['match_forecast__score_home'] - q['match_forecast__score_away']) == (q['match_result__score_home'] - q['match_result__score_away']) and (q['match_result__score_home'] != q['match_result__score_away']) and (q['match_forecast__score_home'] != q['match_result__score_home']):
                 points = points + (rules['goals difference'] if 'goals difference' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
                 goals_difference = goals_difference + 1
             elif sign(q['match_forecast__score_home'] - q['match_forecast__score_away']) == sign(q['match_result__score_home'] - q['match_result__score_away']):
@@ -62,6 +76,7 @@ def get_calc_score(qs, obj):
 
         scores = {
             'points': points,
+            'tournament_bonuses': tournament_bonuses,
             'exact_result': exact_result,
             'goals_difference': goals_difference,
             'match_result': match_result,

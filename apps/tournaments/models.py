@@ -25,6 +25,12 @@ class BaseTournament(models.Model):
         blank=False, null=False,
         default='',
     )
+    winner = models.ForeignKey(
+        'Team',
+        on_delete=models.PROTECT,
+        blank=True, null=True,
+        verbose_name=_('Победитель'),
+    )
     ordering = models.IntegerField(
         _('Позиция'),
         blank=False, null=False,
@@ -475,7 +481,7 @@ class Rule(models.Model):
         ('exact result', 'Точный результат матча'),
         ('goals difference', 'Разница голов (кроме ничейного исхода)'),
         ('match result', 'Исход матча (в том числе ничейный исход)'),
-        ('champion', 'Победитель турнира'),
+        ('winner', 'Победитель турнира'),
     )
     rule_type = models.CharField(
         _('Правило'),
@@ -547,3 +553,41 @@ class StageCoefficient(models.Model):
 
     def __str__(self):
         return '{} / {}'.format(self.tournament.title, self.stage.title)
+
+
+class ForecastWinner(models.Model):
+    """
+        Прогноз на победителя
+    """
+    tournament = models.ForeignKey(
+        Tournament,
+        on_delete=models.PROTECT,
+        blank=False, null=False,
+        verbose_name=_('Турнир'),
+        related_name='tournament_forecast_winner',
+    )
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.PROTECT,
+        blank=False, null=False,
+        verbose_name=_('Команда'),
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        blank=False, null=False,
+        verbose_name=_('Пользователь'),
+    )
+
+    class Meta:
+        db_table = 'forecast_winner'
+        unique_together = ('tournament', 'team', 'user',)
+        verbose_name = _('Прогноз на победителя')
+        verbose_name_plural = _('Прогнозы на победителя')
+
+    def display_title(self):    
+        return '{} / {} / {}'.format(
+            self.tournament.title, 
+            self.user.username,
+            self.team.title,
+        )
