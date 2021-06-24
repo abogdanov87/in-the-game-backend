@@ -70,4 +70,9 @@ urlpatterns += [
         api_v2_views.ForecastListCreateAPIView.as_view(),
         name='create',
     ),
+    url(
+        r'^api/v2/participant/(?P<pk>\d+)/$',
+        api_v2_views.ParticipantRetrieveUpdateAPIView.as_view(),
+        name='retrieve',
+    ),
 ]
