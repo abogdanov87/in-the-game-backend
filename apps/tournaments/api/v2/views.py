@@ -32,6 +32,7 @@ from common.models import (
 )
 from .serializers import (
     BaseTournamentSerializer,
+    ParticipantStatSerializer,
     TournamentSerializer,
     TournamentShortSerializer,
     CountrySerializer,
@@ -81,6 +82,12 @@ class ParticipantListCreateUpdateAPIView(ListBulkCreateUpdateAPIView):
     queryset = Participant.objects.all()
     serializer_class = ParticipantShortSerializer
     filterset_class = ParticipantFilter
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class ParticipantRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
+    queryset = Participant.objects.all()
+    serializer_class = ParticipantStatSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
