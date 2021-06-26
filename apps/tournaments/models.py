@@ -478,6 +478,7 @@ class Rule(models.Model):
         Правило 
     """
     RULE_TYPES = (
+        ('wrong forecast', 'Неверный прогноз'),
         ('exact result', 'Точный результат матча'),
         ('goals difference', 'Разница голов (кроме ничейного исхода)'),
         ('match result', 'Исход матча (в том числе ничейный исход)'),

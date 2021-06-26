@@ -35,6 +35,7 @@ def get_calc_score(qs, obj):
         exact_result = 0
         goals_difference = 0
         match_result = 0
+        wrong_forecast = 0
 
         qs_rules = Rule.objects.filter(
             active=True,
@@ -62,10 +63,10 @@ def get_calc_score(qs, obj):
         for q in qs:
             forecasts_count = forecasts_count + 1
             if (q['match_forecast__score_home'] == q['match_result__score_home']) and (q['match_forecast__score_away'] == q['match_result__score_away']):
-                points = points + (rules['exact result'] if 'exact result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
+                points = points + (rules['exact result'] if 'exact result' in rules else 3.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
                 exact_result = exact_result + 1
             elif (q['match_forecast__score_home'] - q['match_forecast__score_away']) == (q['match_result__score_home'] - q['match_result__score_away']) and (q['match_result__score_home'] != q['match_result__score_away']) and (q['match_forecast__score_home'] != q['match_result__score_home']):
-                points = points + (rules['goals difference'] if 'goals difference' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
+                points = points + (rules['goals difference'] if 'goals difference' in rules else 2.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
                 goals_difference = goals_difference + 1
             elif sign(q['match_forecast__score_home'] - q['match_forecast__score_away']) == sign(q['match_result__score_home'] - q['match_result__score_away']):
                 points = points + (rules['match result'] if 'match result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
@@ -74,7 +75,8 @@ def get_calc_score(qs, obj):
                 points = points + (rules['match result'] if 'match result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
                 match_result = match_result + 1
             else:
-                points = points + 0.
+                points = points + (rules['wrong forecast'] if 'wrong forecast' in rules else 0.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
+                wrong_forecast = wrong_forecast + 1
 
         scores = {
             'points': points,
@@ -83,6 +85,7 @@ def get_calc_score(qs, obj):
             'exact_result': exact_result,
             'goals_difference': goals_difference,
             'match_result': match_result,
+            'wrong_forecast': wrong_forecast,
         }
 
         return scores
@@ -173,6 +176,7 @@ class BaseTournamentShortSerializer(BulkSerializerMixin, serializers.ModelSerial
 class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
     base_tournament = BaseTournamentSerializer()
     teams = serializers.SerializerMethodField()
+    am_i_in = serializers.SerializerMethodField()
 
     class Meta:
         model = Tournament
@@ -187,12 +191,14 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
             'tournament_stage_coef',
             'tournament_rules',
             'teams',
+            'am_i_in',
         )
+        read_only_fields = ['am_i_in',]
 
     def to_representation(self, instance):
         response = super().to_representation(instance)
         response['tournament_participant'] = ParticipantSerializer(
-            instance.tournament_participant,
+            instance.tournament_participant.exclude(active=False),
             many=True
         ).data
         response['tournament_stage_coef'] = StageCoefficientSerializer(
@@ -204,6 +210,14 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
             many=True
         ).data
         return response
+
+    def get_am_i_in(self, obj):
+        return ParticipantShortSerializer(
+            obj.tournament_participant.filter(
+                user=self.context['user'].id, 
+                active=True
+            ).first()
+        ).data
 
     def get_teams(self, obj):
         qs1 = Match.objects.filter(

@@ -41,9 +41,19 @@ urlpatterns += [
         name='list',
     ),
     url(
+        r'^api/v2/tournaments/my/$',
+        api_v2_views.MyTournamentListAPIView.as_view(),
+        name='list',
+    ),
+    url(
         r'^api/v2/tournaments/$',
         api_v2_views.TournamentCreateAPIView.as_view(),
         name='create',
+    ),
+    url(
+        r'^api/v2/base-tournaments/$',
+        api_v2_views.BaseTournamentListAPIView.as_view(),
+        name='list',
     ),
     url(
         r'^api/v2/users/$',
@@ -74,5 +84,15 @@ urlpatterns += [
         r'^api/v2/participant/(?P<pk>\d+)/$',
         api_v2_views.ParticipantRetrieveUpdateAPIView.as_view(),
         name='retrieve',
+    ),
+    url(
+        r'^api/v2/tournament/(?P<pk>\d+)/join/$',
+        api_v2_views.ParticipantJoinUpdateAPIView.as_view(),
+        name='join',
+    ),
+    url(
+        r'^api/v2/tournament/(?P<pk>\d+)/quit/$',
+        api_v2_views.ParticipantQuitUpdateAPIView.as_view(),
+        name='quit',
     ),
 ]

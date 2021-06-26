@@ -32,6 +32,7 @@ from common.models import (
 )
 from .serializers import (
     BaseTournamentSerializer,
+    BaseTournamentShortSerializer,
     ParticipantStatSerializer,
     TournamentSerializer,
     TournamentShortSerializer,
@@ -54,6 +55,7 @@ from common.api.v1.serializers import (
 from .filters import (
     ParticipantFilter,
     MatchFilter,
+    TournamentFilter,
 )
 from common.api.v1.filters import (
     UserFilter,
@@ -65,11 +67,42 @@ class TournamentRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
     serializer_class = TournamentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request, pk, format=None):
+        return Response(TournamentSerializer(
+            self.get_queryset().get(pk=pk),
+            context={'user': request.user},
+        ).data)
+
 
 class TournamentListAPIView(generics.ListAPIView):
     queryset = Tournament.objects.all()
     serializer_class = TournamentShortSerializer
+    filterset_class = TournamentFilter
     permission_classes = [permissions.AllowAny]
+
+
+class BaseTournamentListAPIView(generics.ListAPIView):
+    queryset = BaseTournament.objects.filter(active=True)
+    serializer_class = BaseTournamentShortSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class MyTournamentListAPIView(generics.ListAPIView):
+    queryset = Tournament.objects.all()
+    serializer_class = TournamentShortSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        serializer = self.serializer_class
+        if request.user.id:
+            return Response([
+                serializer(q).data for q in Tournament.objects.filter(
+                    tournament_participant__user=request.user.id,
+                    tournament_participant__active=True
+                )
+            ])
+        else:
+            return Response([])
 
 
 class TournamentCreateAPIView(generics.CreateAPIView):
@@ -198,5 +231,57 @@ class ForecastUpdateAPIView(generics.UpdateAPIView):
                 return Response(ForecastSerializer(forecast_inst).data, status=status.HTTP_201_CREATED)
             else:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
+        except:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class ParticipantJoinUpdateAPIView(generics.UpdateAPIView):
+    queryset = Participant.objects.all()
+    serializer_class = ParticipantShortSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk, format=None):
+        try:
+            tournament = Tournament.objects.get(pk=pk)
+            if tournament.open:
+                q = Participant.objects.filter(
+                    user=request.user,
+                    tournament=tournament,
+                )
+                obj = None
+                if q.count() > 0:
+                    obj = q.first()
+                    obj.active = True
+                    obj.save()
+                else:
+                    obj = Participant(
+                        user=request.user,
+                        tournament=tournament,
+                        admin=False,
+                        active=True,
+                    )
+                    obj.save()
+                return Response(data=ParticipantShortSerializer(obj).data, status=status.HTTP_200_OK)
+            else:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        except:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class ParticipantQuitUpdateAPIView(generics.UpdateAPIView):
+    queryset = Participant.objects.all()
+    serializer_class = ParticipantShortSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk, format=None):
+        try:
+            tournament = Tournament.objects.get(pk=pk)
+            obj = Participant.objects.get(
+                user=request.user,
+                tournament=tournament,
+            )
+            obj.active = False
+            obj.save()
+            return Response(data=ParticipantShortSerializer(obj).data, status=status.HTTP_200_OK)
         except:
             return Response(status=status.HTTP_400_BAD_REQUEST)
