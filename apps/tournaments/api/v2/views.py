@@ -1,3 +1,4 @@
+from django.utils.translation import activate
 from rest_framework import generics, permissions, status
 from rest_framework_bulk import ListBulkCreateUpdateAPIView
 from rest_framework.views import APIView
@@ -83,7 +84,7 @@ class TournamentListAPIView(generics.ListAPIView):
 
 class BaseTournamentListAPIView(generics.ListAPIView):
     queryset = BaseTournament.objects.filter(active=True)
-    serializer_class = BaseTournamentShortSerializer
+    serializer_class = BaseTournamentSerializer
     permission_classes = [permissions.AllowAny]
 
 
@@ -109,6 +110,82 @@ class TournamentCreateAPIView(generics.CreateAPIView):
     queryset = Tournament.objects.all()
     serializer_class = TournamentShortSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, format=None):
+        try:
+            base_tournament = BaseTournament.objects.get(pk=request.data['data']['baseTournament']['id'])
+
+            new_tournament = Tournament(
+                title=request.data['data']['title'],
+                base_tournament=base_tournament,
+                code=request.data['data']['code'],
+                open=False,
+                active=True
+            )
+            new_tournament.save()
+
+            new_participant = Participant(
+                tournament=new_tournament,
+                user=request.user,
+                active=True,
+                admin=True
+            )
+            new_participant.save()
+
+            new_rules = []
+            rule = Rule(
+                rule_type='wrong forecast',
+                tournament=new_tournament,
+                points=request.data['score']['wrongForecast'],
+                active=True
+            )
+            rule.save()
+            new_rules.append(RuleSerializer(rule).data)
+            rule = Rule(
+                rule_type='match result',
+                tournament=new_tournament,
+                points=request.data['score']['matchResult'],
+                active=True
+            )
+            rule.save()
+            new_rules.append(RuleSerializer(rule).data)
+            rule = Rule(
+                rule_type='goals difference',
+                tournament=new_tournament,
+                points=request.data['score']['goalsDifference'],
+                active=True
+            )
+            rule.save()
+            new_rules.append(RuleSerializer(rule).data)
+            rule = Rule(
+                rule_type='exact result',
+                tournament=new_tournament,
+                points=request.data['score']['exactResult'],
+                active=True
+            )
+            rule.save()
+            new_rules.append(RuleSerializer(rule).data)
+
+            new_stages = []
+            for s in request.data['coefficients']:
+                stage = Stage.objects.get(pk=s['id'])
+                new_stage = StageCoefficient(
+                    tournament=new_tournament,
+                    stage=stage,
+                    coefficient=(s['coefficient'] if 'coefficient' in s else 1),
+                    active=True
+                )
+                new_stage.save()
+                new_stages.append(StageCoefficient(new_stage).data)
+            
+            return Response({
+                'tournament': TournamentSerializer(new_tournament).data,
+                'participant': ParticipantSerializer(new_participant).data,
+                'rules': new_rules,
+                'stages': new_stages
+            }, status=status.HTTP_201_CREATED) 
+        except:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class ParticipantListCreateUpdateAPIView(ListBulkCreateUpdateAPIView):

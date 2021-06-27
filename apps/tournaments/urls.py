@@ -46,7 +46,7 @@ urlpatterns += [
         name='list',
     ),
     url(
-        r'^api/v2/tournaments/$',
+        r'^api/v2/tournament/create/$',
         api_v2_views.TournamentCreateAPIView.as_view(),
         name='create',
     ),
