@@ -106,6 +106,23 @@ class MyTournamentListAPIView(generics.ListAPIView):
             return Response([])
 
 
+class TournamentCodeListAPIView(generics.ListAPIView):
+    queryset = Tournament.objects.all()
+    serializer_class = TournamentShortSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, format=None):
+        try:
+            return Response(
+                Tournament.objects.filter(code=request.GET['code']).count(),
+                status=status.HTTP_200_OK
+            )
+        except:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST
+            ) 
+
+
 class TournamentCreateAPIView(generics.CreateAPIView):
     queryset = Tournament.objects.all()
     serializer_class = TournamentShortSerializer
@@ -165,6 +182,15 @@ class TournamentCreateAPIView(generics.CreateAPIView):
             )
             rule.save()
             new_rules.append(RuleSerializer(rule).data)
+            if request.data['score']['winner'] != 0:
+                rule = Rule(
+                    rule_type='winner',
+                    tournament=new_tournament,
+                    points=request.data['score']['winner'],
+                    active=True
+                )
+                rule.save()
+                new_rules.append(RuleSerializer(rule).data)
 
             new_stages = []
             for s in request.data['coefficients']:

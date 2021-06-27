@@ -95,4 +95,9 @@ urlpatterns += [
         api_v2_views.ParticipantQuitUpdateAPIView.as_view(),
         name='quit',
     ),
+    url(
+        r'^api/v2/tournament-code/check/$',
+        api_v2_views.TournamentCodeListAPIView.as_view(),
+        name='check',
+    ),
 ]
