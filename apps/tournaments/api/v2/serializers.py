@@ -79,8 +79,8 @@ def get_calc_score(qs, obj):
                 wrong_forecast = wrong_forecast + 1
 
         scores = {
-            'points': points,
-            'tournament_bonuses': tournament_bonuses,
+            'points': round(points, 1),
+            'tournament_bonuses': round(tournament_bonuses, 1),
             'forecasts_count': forecasts_count,
             'exact_result': exact_result,
             'goals_difference': goals_difference,
@@ -171,6 +171,18 @@ class BaseTournamentShortSerializer(BulkSerializerMixin, serializers.ModelSerial
 
     def validate(self, data):
         return data
+
+
+class TournamentLogoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tournament
+        fields = (
+            'id',
+            'logo',
+        )
+
+    def validate(self, data):
+        return data       
 
 
 class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):

@@ -36,6 +36,11 @@ urlpatterns += [
         name='retrieve_and_update',
     ),
     url(
+        r'^api/v2/tournament/(?P<pk>\d+)/logo/$',
+        api_v2_views.TournamentLogoUpdateAPIView.as_view(),
+        name='update logo',
+    ),
+    url(
         r'^api/v2/tournaments/$',
         api_v2_views.TournamentListAPIView.as_view(),
         name='list',
@@ -96,7 +101,7 @@ urlpatterns += [
         name='quit',
     ),
     url(
-        r'^api/v2/tournament-code/check/$',
+        r'^api/v2/tournament/code-check/$',
         api_v2_views.TournamentCodeListAPIView.as_view(),
         name='check',
     ),

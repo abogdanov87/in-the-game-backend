@@ -35,6 +35,7 @@ from .serializers import (
     BaseTournamentSerializer,
     BaseTournamentShortSerializer,
     ParticipantStatSerializer,
+    TournamentLogoSerializer,
     TournamentSerializer,
     TournamentShortSerializer,
     CountrySerializer,
@@ -73,6 +74,12 @@ class TournamentRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
             self.get_queryset().get(pk=pk),
             context={'user': request.user},
         ).data)
+
+
+class TournamentLogoUpdateAPIView(generics.UpdateAPIView):
+    queryset = Tournament.objects.all()
+    serializer_class = TournamentLogoSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class TournamentListAPIView(generics.ListAPIView):
@@ -140,7 +147,7 @@ class TournamentCreateAPIView(generics.CreateAPIView):
                 active=True
             )
             new_tournament.save()
-
+            
             new_participant = Participant(
                 tournament=new_tournament,
                 user=request.user,
@@ -191,7 +198,7 @@ class TournamentCreateAPIView(generics.CreateAPIView):
                 )
                 rule.save()
                 new_rules.append(RuleSerializer(rule).data)
-
+            
             new_stages = []
             for s in request.data['coefficients']:
                 stage = Stage.objects.get(pk=s['id'])
@@ -202,10 +209,10 @@ class TournamentCreateAPIView(generics.CreateAPIView):
                     active=True
                 )
                 new_stage.save()
-                new_stages.append(StageCoefficient(new_stage).data)
+                new_stages.append(StageCoefficientSerializer(new_stage).data)
             
             return Response({
-                'tournament': TournamentSerializer(new_tournament).data,
+                'tournament': TournamentShortSerializer(new_tournament).data,
                 'participant': ParticipantSerializer(new_participant).data,
                 'rules': new_rules,
                 'stages': new_stages
