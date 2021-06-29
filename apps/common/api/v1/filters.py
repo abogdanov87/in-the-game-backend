@@ -17,11 +17,11 @@ class ParamFilter(filters.FilterSet):
 
 
 class UserFilter(filters.FilterSet):
-    username = filters.CharFilter(field_name='username', method='filter_username')
+    nickname = filters.CharFilter(field_name='nickname', method='filter_nickname')
 
     class Meta:
         model = User
-        fields = ('username',)
+        fields = ('nickname',)
 
-    def filter_username(self, queryset, username, value):
-        return queryset.filter(Q(username__icontains=value) | Q(email__icontains=value))
+    def filter_nickname(self, queryset, nickname, value):
+        return queryset.filter(Q(nickname__icontains=value) | Q(username__icontains=value)).order_by('nickname')[:5]

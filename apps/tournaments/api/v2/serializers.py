@@ -173,11 +173,12 @@ class BaseTournamentShortSerializer(BulkSerializerMixin, serializers.ModelSerial
         return data
 
 
-class TournamentLogoSerializer(serializers.ModelSerializer):
+class TournamentUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tournament
         fields = (
             'id',
+            'title',
             'logo',
         )
 
@@ -197,6 +198,7 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
             'id',
             'base_tournament',
             'title',
+            'code',
             'logo',
             'active',
             'tournament_participant',
@@ -430,10 +432,11 @@ class ParticipantSerializer(serializers.ModelSerializer):
         return data
 
 
-class ParticipantShortSerializer(serializers.ModelSerializer):
+class ParticipantShortSerializer(BulkSerializerMixin, serializers.ModelSerializer):
 
     class Meta:
         model = Participant
+        list_serializer_class = BulkListSerializer
         fields = (
             'id',
             'user',

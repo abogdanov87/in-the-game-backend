@@ -32,12 +32,12 @@ urlpatterns = [
 urlpatterns += [
     url(
         r'^api/v2/tournament/(?P<pk>\d+)/$',
-        api_v2_views.TournamentRetrieveUpdateAPIView.as_view(),
+        api_v2_views.TournamentRetrieveAPIView.as_view(),
         name='retrieve_and_update',
     ),
     url(
-        r'^api/v2/tournament/(?P<pk>\d+)/logo/$',
-        api_v2_views.TournamentLogoUpdateAPIView.as_view(),
+        r'^api/v2/tournament/(?P<pk>\d+)/update/$',
+        api_v2_views.TournamentUpdateAPIView.as_view(),
         name='update logo',
     ),
     url(
@@ -87,7 +87,7 @@ urlpatterns += [
     ),
     url(
         r'^api/v2/participant/(?P<pk>\d+)/$',
-        api_v2_views.ParticipantRetrieveUpdateAPIView.as_view(),
+        api_v2_views.ParticipantRetrieveAPIView.as_view(),
         name='retrieve',
     ),
     url(
@@ -104,5 +104,10 @@ urlpatterns += [
         r'^api/v2/tournament/code-check/$',
         api_v2_views.TournamentCodeListAPIView.as_view(),
         name='check',
+    ),
+    url(
+        r'^api/v2/participants/$',
+        api_v2_views.ParticipantListCreateUpdateAPIView.as_view(),
+        name='edit participants',
     ),
 ]
