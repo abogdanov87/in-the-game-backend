@@ -30,6 +30,11 @@ class User(AbstractUser):
         _('Дата изменения пароля'),
         default=timezone.datetime(year=1970, month=1, day=1),
     )
+    description = models.CharField(
+        _('Описание'),
+        max_length=255,
+        blank=True, null=True,
+    )
 
     class Meta:
         db_table = 'auth_user'
