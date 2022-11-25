@@ -156,16 +156,25 @@ class ForecastListCreateAPIView(generics.ListCreateAPIView):
             match = Match.objects.get(id=request.data['match'])
             user = request.user
             tournament = Tournament.objects.get(id=request.data['tournament'])
+            forecast_type = request.data['forecast_type']
+            score_home = request.data['score_home']
+            score_away = request.data['score_away']
+        except:
+            return Response(data={'message': 'invalid data'}, status=status.HTTP_400_BAD_REQUEST)
 
+        try:
             forecast_inst = Forecast(
-                forecast_type = request.data['forecast_type'],
+                forecast_type = forecast_type,
                 tournament = tournament,
                 user = user,
                 match = match,
-                score_home = request.data['score_home'],
-                score_away = request.data['score_away'],
+                score_home = score_home,
+                score_away = score_away,
             )
-
+        except:
+            return Response(data={'message': 'instance is invalid'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
             match_time = match.start_date.replace(tzinfo=None)
             now_time = timezone.now().replace(tzinfo=None)
 
@@ -173,7 +182,7 @@ class ForecastListCreateAPIView(generics.ListCreateAPIView):
                 forecast_inst.save()
                 return Response(ForecastSerializer(forecast_inst).data, status=status.HTTP_201_CREATED)
             else:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
+                return Response(data={'message': "cant't save forecast or time's up"}, status=status.HTTP_400_BAD_REQUEST)
         except:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 

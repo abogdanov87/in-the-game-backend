@@ -35,6 +35,9 @@ DEBUG = True
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
+    '31.31.196.48',
+    'footbet.fun',
+    'www.footbet.fun',
 ]
 
 
@@ -149,6 +152,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',
+    'http://localhost:8000',
 ]
 
 
@@ -214,14 +218,14 @@ MEDIA_URL = '/files/'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # Host for sending e-mail.
-EMAIL_HOST = 'mail.in-the-game.ru'
+EMAIL_HOST = 'mail.footbet.fun'
 
 # Port for sending e-mail.
 EMAIL_PORT = 465
 # EMAIL_PORT = 587
 
 # Optional SMTP authentication information for EMAIL_HOST.
-EMAIL_HOST_USER = 'team@in-the-game.ru'
+EMAIL_HOST_USER = 'team@footbet.fun'
 EMAIL_HOST_PASSWORD = 'N_7Q2iDd'
 SERVER_EMAIL = EMAIL_HOST_USER
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
