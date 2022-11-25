@@ -15,6 +15,7 @@ class MyUserAdmin(UserAdmin):
         'username', 
         'email',
         'nickname',
+        'description',
         'avatar',
     )
     list_display_links = ('username',)
@@ -26,6 +27,7 @@ class MyUserAdmin(UserAdmin):
                 'fields': (
                     'nickname',
                     'email',
+                    'description',
                     'avatar',
                 ),
             },
