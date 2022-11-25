@@ -206,6 +206,6 @@ class ForecastUpdateAPIView(generics.UpdateAPIView):
                 forecast_inst.save()
                 return Response(ForecastSerializer(forecast_inst).data, status=status.HTTP_201_CREATED)
             else:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
+                return Response(data={'message': "cant't save forecast or time's up"}, status=status.HTTP_400_BAD_REQUEST)
         except:
             return Response(status=status.HTTP_400_BAD_REQUEST)
