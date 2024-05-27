@@ -3,9 +3,9 @@ from .base import *
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    '37.140.192.51',
-    'in-the-game.ru',
-    'www.in-the-game.ru',
+    '31.31.196.253',
+    'footbet.fun',
+    'www.footbet.fun',
 ]
 
 MIDDLEWARE += [
@@ -15,14 +15,14 @@ MIDDLEWARE += [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'u1344503_default',
-        'USER': 'u1344503_default',
-        'PASSWORD': 'N_7Q2iDd',
+        'NAME': 'u2662691_default',
+        'USER': 'u2662691_default',
+        'PASSWORD': 'kG0R44FppFtRrOg3',
         'HOST': 'localhost',
     }
 }
 
-BASE_URL = 'https://www.in-the-game.ru'
+BASE_URL = 'https://www.footbet.fun'
 LOGIN_FORM_URL = BASE_URL + '/admin/json/api-auth/login/'
 HOME_FORM_URL = BASE_URL + '/#/'
 
