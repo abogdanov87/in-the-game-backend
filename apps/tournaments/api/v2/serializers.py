@@ -74,7 +74,7 @@ def get_calc_score(qs, obj):
                 points = points + (rules['match result'] if 'match result' in rules else 1.) * (coefficients[q['stage']] if q['stage'] in coefficients else 1.)
                 match_result = match_result + 1
             else:
-                points = points + 0.
+                points = points + tournament_bonuses
 
         scores = {
             'points': round(points, 1),
