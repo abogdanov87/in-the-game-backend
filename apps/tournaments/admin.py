@@ -116,6 +116,7 @@ class TeamAdmin(admin.ModelAdmin):
     list_display = ('title',)
     list_display_links = ('title',)
     list_filter = ()
+    ordering = ('title',)
 
 
 @admin.register(Match)
