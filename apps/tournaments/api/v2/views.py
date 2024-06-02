@@ -34,6 +34,7 @@ from .serializers import (
     BaseTournamentSerializer,
     ParticipantStatSerializer,
     TournamentSerializer,
+    TournamentTableSerializer,
     TournamentShortSerializer,
     CountrySerializer,
     TeamSerializer,
@@ -64,6 +65,12 @@ class TournamentRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
     queryset = Tournament.objects.all()
     serializer_class = TournamentSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+
+class TournamentTableRetrieveAPIView(generics.RetrieveAPIView):
+    queryset = Tournament.objects.all()
+    serializer_class = TournamentTableSerializer
+    permission_classes = [permissions.AllowAny]
 
 
 class TournamentListAPIView(generics.ListAPIView):

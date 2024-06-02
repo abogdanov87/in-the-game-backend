@@ -37,4 +37,16 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         return data
+    
+
+class UserShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'nickname',
+        )
+
+    def validate(self, data):
+        return data
                 

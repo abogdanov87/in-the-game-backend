@@ -31,6 +31,11 @@ urlpatterns = [
 
 urlpatterns += [
     url(
+        r'^api/v2/tournament-table/(?P<pk>\d+)/$',
+        api_v2_views.TournamentTableRetrieveAPIView.as_view(),
+        name='retrieve_table',
+    ),
+    url(
         r'^api/v2/tournament/(?P<pk>\d+)/$',
         api_v2_views.TournamentRetrieveUpdateAPIView.as_view(),
         name='retrieve_and_update',
