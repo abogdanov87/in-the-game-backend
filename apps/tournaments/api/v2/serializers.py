@@ -240,7 +240,7 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
     
 
 class TournamentTableSerializer(BulkSerializerMixin, serializers.ModelSerializer):
-    base_tournament = BaseTournamentSerializer()
+    base_tournament = BaseTournamentShortSerializer()
 
     class Meta:
         model = Tournament
