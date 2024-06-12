@@ -94,7 +94,8 @@ def get_calc_score(qs, obj):
 
 
 def get_points(qs, obj):
-    return score_calculation(qs, obj)['points']
+    points = score_calculation(qs, obj)
+    return points['points']
 
 
 class RuleSerializer(serializers.ModelSerializer):

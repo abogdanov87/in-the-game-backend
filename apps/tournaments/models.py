@@ -158,6 +158,16 @@ class Participant(models.Model):
         verbose_name=_('Турнир'),
         related_name='tournament_participant',
     )
+    description = models.CharField(
+        _('Описание'),
+        max_length=255,
+        blank=True, null=True,
+    )
+    checkin = models.BooleanField(
+        _('Зачекинился'),
+        blank=False, null=False,
+        default=False,
+    )
     admin = models.BooleanField(
         _('Админ'),
         blank=False, null=False,

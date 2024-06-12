@@ -163,13 +163,15 @@ class ParticipantAdmin(admin.ModelAdmin):
     fields = [
         'user',
         'tournament',
+        'description',
+        'checkin',
         'admin',
         'active',
     ]
     inlines = [
        
     ]
-    list_display = ('user', 'tournament',)
+    list_display = ('user', 'tournament', 'checkin', 'description',)
     list_display_links = ('user', 'tournament',)
     list_filter = ()
 
