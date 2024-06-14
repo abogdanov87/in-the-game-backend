@@ -237,4 +237,10 @@ class EmptyForecastsRetrieveAPIView(generics.RetrieveAPIView):
         for p in participants_qs:
             message = message + f"""'{p.user.description or p.user.email}'"""
 
-        return Response(data={message}, status=status.HTTP_200_OK)
+        return Response(
+            data={
+                f"Турнир: {forecasts_qs.first().tournament.title}", 
+                f"Матч: {forecasts_qs.first().match.team_home.title} v {forecasts_qs.first().match.team_away.title}", 
+                f"Не сделали прогноз: {message}"}, 
+            status=status.HTTP_200_OK
+            )
