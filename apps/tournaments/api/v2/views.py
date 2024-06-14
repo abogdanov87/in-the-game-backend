@@ -235,6 +235,6 @@ class EmptyForecastsRetrieveAPIView(generics.RetrieveAPIView):
         ).exclude(user__in=[f.user for f in forecasts_qs])
         message = f""
         for p in participants_qs:
-            message = message + f"@{p.user.nickname or p.user.email} "
+            message = message + f"""'{p.user.description or p.user.email}'"""
 
         return Response(data={message}, status=status.HTTP_200_OK)
