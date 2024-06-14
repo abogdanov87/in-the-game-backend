@@ -216,3 +216,25 @@ class ForecastUpdateAPIView(generics.UpdateAPIView):
                 return Response(data={'message': "cant't save forecast or time's up"}, status=status.HTTP_400_BAD_REQUEST)
         except:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+        
+
+class EmptyForecastsRetrieveAPIView(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, format=None):
+        forecasts_qs = Forecast.objects.filter(
+            match=request.GET['match'],
+            tournament=request.GET['tournament'],
+            forecast_type='full time',
+        )
+        participants_qs = Participant.objects.filter(
+            tournament=request.GET['tournament'],
+            active=True,
+        ).exclude(user__in=[f.user for f in forecasts_qs])
+        message = f""
+        for p in participants_qs:
+            message = message + f"@{p.user.nickname or p.user.email} "
+
+        return Response(data={message}, status=status.HTTP_200_OK)

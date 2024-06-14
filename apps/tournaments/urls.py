@@ -80,4 +80,9 @@ urlpatterns += [
         api_v2_views.ParticipantRetrieveUpdateAPIView.as_view(),
         name='retrieve',
     ),
+    url(
+        r'^api/v2/empty-forecasts/$',
+        api_v2_views.EmptyForecastsRetrieveAPIView.as_view(),
+        name='retrieve',
+    ),
 ]
