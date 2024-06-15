@@ -212,7 +212,7 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
                 p['score']['exact_result'],
                 p['score']['goals_difference'],
                 p['score']['match_result'],
-                (p['user']['nickname'] or p['user']['username'])
+                p['id'],
             ), 
             reverse=True)
         response['tournament_participant'] = sorted_participants
@@ -279,7 +279,7 @@ class TournamentTableSerializer(BulkSerializerMixin, serializers.ModelSerializer
                 p['score']['exact_result'],
                 p['score']['goals_difference'],
                 p['score']['match_result'],
-                (p['user']['nickname'] or p['user']['username'])
+                p['id'],
             ), 
             reverse=True)
         response['tournament_participant'] = sorted_participants
@@ -470,6 +470,7 @@ class ParticipantTableSerializer(serializers.ModelSerializer):
     class Meta:
         model = Participant
         fields = (
+            'id',
             'user',
             'score',
         )
