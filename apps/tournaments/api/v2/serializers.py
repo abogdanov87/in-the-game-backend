@@ -201,10 +201,21 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
 
     def to_representation(self, instance):
         response = super().to_representation(instance)
-        response['tournament_participant'] = ParticipantSerializer(
+        participants = ParticipantSerializer(
             instance.tournament_participant,
             many=True
         ).data
+        sorted_participants = sorted(
+            participants, 
+            key=lambda p: (
+                p['score']['points'],
+                p['score']['exact_result'],
+                p['score']['goals_difference'],
+                p['score']['match_result'],
+                (p['user']['nickname'] or p['user']['username'])
+            ), 
+            reverse=True)
+        response['tournament_participant'] = sorted_participants
         response['tournament_stage_coef'] = StageCoefficientSerializer(
             instance.tournament_stage_coef,
             many=True
@@ -257,10 +268,21 @@ class TournamentTableSerializer(BulkSerializerMixin, serializers.ModelSerializer
 
     def to_representation(self, instance):
         response = super().to_representation(instance)
-        response['tournament_participant'] = ParticipantTableSerializer(
+        participants = ParticipantTableSerializer(
             instance.tournament_participant,
             many=True
         ).data
+        sorted_participants = sorted(
+            participants, 
+            key=lambda p: (
+                p['score']['points'],
+                p['score']['exact_result'],
+                p['score']['goals_difference'],
+                p['score']['match_result'],
+                (p['user']['nickname'] or p['user']['username'])
+            ), 
+            reverse=True)
+        response['tournament_participant'] = sorted_participants
         return response
 
     def validate(self, data):
