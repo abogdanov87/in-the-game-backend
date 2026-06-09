@@ -491,7 +491,9 @@ class Rule(models.Model):
         ('exact result', 'Точный результат матча'),
         ('goals difference', 'Разница голов (кроме ничейного исхода)'),
         ('match result', 'Исход матча (в том числе ничейный исход)'),
-        ('winner', 'Победитель турнира'),
+        ('winner1', 'Победитель турнира 1'),
+        ('winner2', 'Победитель турнира 2'),
+        ('winner3', 'Победитель турнира 3'),
     )
     rule_type = models.CharField(
         _('Правило'),
@@ -569,6 +571,18 @@ class ForecastWinner(models.Model):
     """
         Прогноз на победителя
     """
+    WINNER_TYPES = (
+        ('first', 'Первый'),
+        ('second', 'Второй'),
+        ('third', 'Третий'),
+    )
+    winner_type = models.CharField(
+        _('Тип'),
+        choices=WINNER_TYPES,
+        max_length=32,
+        blank=False, null=False,
+        default='first',
+    )
     tournament = models.ForeignKey(
         Tournament,
         on_delete=models.PROTECT,
@@ -591,13 +605,14 @@ class ForecastWinner(models.Model):
 
     class Meta:
         db_table = 'forecast_winner'
-        unique_together = ('tournament', 'team', 'user',)
+        unique_together = ('tournament', 'team', 'user', 'winner_type',)
         verbose_name = _('Прогноз на победителя')
         verbose_name_plural = _('Прогнозы на победителя')
 
     def display_title(self):    
-        return '{} / {} / {}'.format(
+        return '{} / {} / {}: {}'.format(
             self.tournament.title, 
             self.user.username,
+            self.winner_type,
             self.team.title,
         )

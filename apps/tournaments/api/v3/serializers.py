@@ -51,29 +51,12 @@ def score_calculation(qs, obj):
 
     if obj.tournament.base_tournament.winner:
         try:
-            fw1 = ForecastWinner.objects.get(
+            fw = ForecastWinner.objects.get(
                 tournament=obj.tournament.id,
                 user=obj.user.id,
-                winner_type='first',
             )
-            if fw1.team.id == obj.tournament.base_tournament.winner.id:
-                tournament_bonuses = tournament_bonuses + (rules['winner1'] if 'winner1' in rules else 0.)
-            
-            fw2 = ForecastWinner.objects.get(
-                tournament=obj.tournament.id,
-                user=obj.user.id,
-                winner_type='second',
-            )
-            if fw2.team.id == obj.tournament.base_tournament.winner.id:
-                tournament_bonuses = tournament_bonuses + (rules['winner2'] if 'winner2' in rules else 0.)
-            
-            fw3 = ForecastWinner.objects.get(
-                tournament=obj.tournament.id,
-                user=obj.user.id,
-                winner_type='third',
-            )
-            if fw3.team.id == obj.tournament.base_tournament.winner.id:
-                tournament_bonuses = tournament_bonuses + (rules['winner3'] if 'winner3' in rules else 0.)
+            if fw.team.id == obj.tournament.base_tournament.winner.id:
+                tournament_bonuses = tournament_bonuses + (rules['winner'] if 'winner' in rules else 0.)
         except:
             pass
     
@@ -268,6 +251,33 @@ class TournamentSerializer(BulkSerializerMixin, serializers.ModelSerializer):
         return data
     
 
+class TournamentMatchesSerializer(BulkSerializerMixin, serializers.ModelSerializer):
+    matches = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Tournament
+        list_serializer_class = BulkListSerializer
+        fields = (
+            'id',
+            'title',
+            'logo',
+            'matches',
+        )
+
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        return response
+    
+    def get_matches(self, obj):
+        qs = Match.objects.filter(
+            base_tournament=obj.base_tournament.id,
+        ).order_by('start_date')
+        return [MatchSerializer(q).data for q in qs]
+
+    def validate(self, data):
+        return data
+    
+
 class TournamentTableSerializer(BulkSerializerMixin, serializers.ModelSerializer):
     base_tournament = BaseTournamentShortSerializer()
 
@@ -380,6 +390,20 @@ class TeamSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         return data
+    
+
+class TeamShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Team
+        fields = (
+            'id',
+            'title',
+            'short_title',
+            'badge',
+        )
+
+    def validate(self, data):
+        return data
 
 
 class StageSerializer(serializers.ModelSerializer):
@@ -413,18 +437,25 @@ class ResultSerializer(BulkSerializerMixin, serializers.ModelSerializer):
 
 
 class MatchSerializer(serializers.ModelSerializer):
+    stage = serializers.SerializerMethodField()
+    forecast = serializers.SerializerMethodField()
+    status_label = serializers.SerializerMethodField()
+    team_home = TeamShortSerializer()
+    team_away = TeamShortSerializer()
+
     class Meta:
         model = Match
         fields = (
             'id',
-            'base_tournament',
             'stage',
             'team_home',
             'team_away',
             'start_date',
             'place',
             'status',
+            'status_label',
             'match_result',
+            'forecast',
         )
 
     def to_representation(self, instance):
@@ -434,6 +465,26 @@ class MatchSerializer(serializers.ModelSerializer):
             many=True
         ).data
         return response
+    
+    def get_stage(self, obj):
+        stage_obj = Stage.objects.get(id=obj.stage.id)
+        return stage_obj.title
+    
+    def get_forecast(self, obj):
+        return []
+    
+    def get_status_label(self, obj):
+        label = ''
+        if obj.status == 'not started':
+            return 'не начался'
+        elif obj.status == 'finished':
+            return 'завершён'
+        elif obj.status == 'started':
+            return 'начался'
+        elif obj.status == 'cancelled':
+            return 'отменён'
+        else:
+            return ''
 
     def validate(self, data):
         return data
@@ -536,8 +587,7 @@ class ParticipantShortSerializer(serializers.ModelSerializer):
 
 
 class ParticipantStatSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
-    tournament = TournamentShortSerializer()
+    user = UserShortSerializer()
     score = serializers.SerializerMethodField()
     winner = serializers.SerializerMethodField()
 
@@ -546,9 +596,6 @@ class ParticipantStatSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'user',
-            'tournament',
-            'admin',
-            'active',
             'winner',
             'score',
         )
@@ -558,8 +605,9 @@ class ParticipantStatSerializer(serializers.ModelSerializer):
             fw = ForecastWinner.objects.get(
                 tournament=obj.tournament.id,
                 user=obj.user.id,
+                winner_type='first',
             )
-            return TeamSerializer(fw.team).data
+            return TeamShortSerializer(fw.team).data
         except:
             return None
 

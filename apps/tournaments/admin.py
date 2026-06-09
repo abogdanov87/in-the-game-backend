@@ -203,8 +203,9 @@ class ForecastWinnerAdmin(admin.ModelAdmin):
         'tournament',
         'team',
         'user',
+        'winner_type',
     ]
     inlines = []
     list_display = ('display_title',)
     list_display_links = ('display_title',)
-    list_filter = ('tournament', 'user')
+    list_filter = ('tournament', 'user', 'winner_type')

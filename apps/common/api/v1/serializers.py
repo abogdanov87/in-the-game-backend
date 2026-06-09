@@ -45,6 +45,7 @@ class UserShortSerializer(serializers.ModelSerializer):
         fields = (
             'username',
             'nickname',
+            'avatar',
         )
 
     def validate(self, data):

@@ -94,11 +94,17 @@ class MailAPIView(APIView):
     permission_classes = [permissions.AllowAny,]
 
     def post(self, request, *args, **kwargs):
-        generated_pwd = '00000{0}'.format(random.randint(0, 999999))[-6:]
-        email = request.data['email'].lower().replace(' ', '')
-        username = email
-        nickname = email.split('@').pop(0)
-        password_date = timezone.now()
+        try:
+            generated_pwd = '00000{0}'.format(random.randint(0, 999999))[-6:]
+            email = request.data['email'].lower().replace(' ', '')
+            username = email
+            nickname = email.split('@').pop(0)
+            password_date = timezone.now()
+        except:
+            return Response({
+                'status': status.HTTP_400_BAD_REQUEST,
+                'sent': False,
+            })
 
         user_instance = None
         try:
@@ -117,7 +123,7 @@ class MailAPIView(APIView):
         user_instance.password_change_date = password_date
         user_instance.save()
 
-        subject = 'Код для входа на IN-THE-GAME'
+        subject = 'Код для входа на footbet.fun'
         html_message = render_to_string(
             'registration_msg_russian.html', 
             { 
@@ -144,9 +150,9 @@ class MailAPIView(APIView):
             mail.save()
         except:
             return Response({
-            'status': status.HTTP_400_BAD_REQUEST,
-            'sent': False,
-        })
+                'status': status.HTTP_400_BAD_REQUEST,
+                'sent': False,
+            })
         
         return Response({
             'status': status.HTTP_200_OK,

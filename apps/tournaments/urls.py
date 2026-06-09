@@ -2,6 +2,7 @@ from django.conf.urls import url
 
 from .api.v1 import views as api_v1_views
 from .api.v2 import views as api_v2_views
+from .api.v3 import views as api_v3_views
 from . import apps
 
 app_name = apps.TournamentConfig.name
@@ -84,5 +85,23 @@ urlpatterns += [
         r'^api/v2/empty-forecasts/$',
         api_v2_views.EmptyForecastsRetrieveAPIView.as_view(),
         name='retrieve',
+    ),
+]
+
+urlpatterns += [
+    url(
+        r'^api/v3/tournaments/(?P<pk>\d+)/table/$',
+        api_v3_views.TournamentTableRetrieveAPIView.as_view(),
+        name='retrieve_table',
+    ),
+    url(
+        r'^api/v3/tournaments/(?P<id>\d+)/participants/(?P<pk>\d+)/$',
+        api_v3_views.ParticipantRetrieveAPIView.as_view(),
+        name='retrieve',
+    ),
+    url(
+        r'^api/v3/tournaments/(?P<pk>\d+)/matches/$',
+        api_v3_views.MatchesAPIView.as_view(),
+        name='list',
     ),
 ]
