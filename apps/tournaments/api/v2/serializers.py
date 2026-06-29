@@ -281,6 +281,7 @@ class TournamentTableSerializer(BulkSerializerMixin, serializers.ModelSerializer
             'logo',
             'active',
             'tournament_participant',
+            'tournament_rules',
         )
 
     def to_representation(self, instance):
@@ -300,6 +301,10 @@ class TournamentTableSerializer(BulkSerializerMixin, serializers.ModelSerializer
             ), 
             reverse=True)
         response['tournament_participant'] = sorted_participants
+        response['tournament_rules'] = RuleSerializer(
+            instance.tournament_rules.filter(active=True),
+            many=True,
+        ).data
         return response
 
     def validate(self, data):
