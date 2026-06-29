@@ -76,6 +76,29 @@ function formatDate(dateString: string) {
   }).format(new Date(dateString));
 }
 
+const FORECAST_EDIT_WINDOW_MS = 60 * 60 * 1000;
+
+function getMsUntilMatchStart(dateString: string, now: number) {
+  return new Date(dateString).getTime() - now;
+}
+
+function canMakeOrEditForecast(match: UiMatch, now: number) {
+  if (match.status === 'completed' || match.status === 'live' || match.status === 'cancelled') {
+    return false;
+  }
+  return getMsUntilMatchStart(match.date, now) >= FORECAST_EDIT_WINDOW_MS;
+}
+
+function shouldShowParticipantForecasts(match: UiMatch, now: number) {
+  if (match.status === 'completed' || match.status === 'live') {
+    return true;
+  }
+  if (match.status === 'cancelled') {
+    return false;
+  }
+  return getMsUntilMatchStart(match.date, now) < FORECAST_EDIT_WINDOW_MS;
+}
+
 function TeamAvatar({ name, badge }: { name: string; badge?: string | null }) {
   return (
     <Avatar
@@ -136,15 +159,19 @@ function ScoreStepper({ label, value, onChange }: { label: string; value: number
 function MatchCard({
   match,
   prediction,
+  now,
   onPredict,
   onShowPredictions,
 }: {
   match: UiMatch;
   prediction?: LocalPrediction;
+  now: number;
   onPredict: () => void;
   onShowPredictions: () => void;
 }) {
   const isCompleted = match.status === 'completed';
+  const showParticipantForecasts = shouldShowParticipantForecasts(match, now);
+  const showForecastEditor = canMakeOrEditForecast(match, now);
   return (
     <Box sx={{ bgcolor: '#0d1120', border: prediction ? '1px solid rgba(196,241,53,0.2)' : '1px solid rgba(26,34,64,0.8)', borderRadius: 1.5, p: 2.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2, gap: 1 }}>
@@ -178,15 +205,15 @@ function MatchCard({
         </Box>
       </Box>
 
-      {isCompleted ? (
+      {showParticipantForecasts ? (
         <Button fullWidth variant="outlined" color="secondary" startIcon={<ViewIcon sx={{ fontSize: '1rem' }} />} onClick={onShowPredictions} sx={{ py: 1.1, fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, letterSpacing: '0.04em', borderColor: 'rgba(26,34,64,0.8)', color: 'text.secondary' }}>
           Прогнозы участников
         </Button>
-      ) : (
+      ) : showForecastEditor ? (
         <Button fullWidth variant={prediction ? 'outlined' : 'contained'} color="primary" onClick={onPredict} sx={{ py: 1.25, fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, letterSpacing: '0.04em' }}>
           {prediction ? 'Изменить прогноз' : 'Сделать прогноз'}
         </Button>
-      )}
+      ) : null}
     </Box>
   );
 }
@@ -206,6 +233,12 @@ export function MatchesPage() {
   const [saving, setSaving] = useState(false);
   const [predictionsLoading, setPredictionsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -279,12 +312,16 @@ export function MatchesPage() {
   const currentPredictionsMatch = predictionsDialog !== null ? matches.find((match) => match.id === predictionsDialog) : null;
 
   const openPredictionDialog = (matchId: number) => {
+    const match = matches.find((item) => item.id === matchId);
+    if (!match || !canMakeOrEditForecast(match, now)) return;
     setTempPrediction(myPredictions[matchId] || { homeScore: 0, awayScore: 0 });
     setPredictionDialog(matchId);
   };
 
   const savePrediction = async () => {
     if (predictionDialog === null || !selectedTournamentId) return;
+    const match = matches.find((item) => item.id === predictionDialog);
+    if (!match || !canMakeOrEditForecast(match, now)) return;
     setSaving(true);
     setError('');
     try {
@@ -366,7 +403,7 @@ export function MatchesPage() {
             <Grid container spacing={2}>
               {upcomingMatches.map((match) => (
                 <Grid size={{ xs: 12, md: 6 }} key={match.id}>
-                  <MatchCard match={match} prediction={myPredictions[match.id]} onPredict={() => openPredictionDialog(match.id)} onShowPredictions={() => openPredictionsDialog(match.id)} />
+                  <MatchCard match={match} prediction={myPredictions[match.id]} now={now} onPredict={() => openPredictionDialog(match.id)} onShowPredictions={() => openPredictionsDialog(match.id)} />
                 </Grid>
               ))}
             </Grid>
@@ -376,7 +413,7 @@ export function MatchesPage() {
             <Grid container spacing={2}>
               {completedMatches.map((match) => (
                 <Grid size={{ xs: 12, md: 6 }} key={match.id}>
-                  <MatchCard match={match} prediction={myPredictions[match.id]} onPredict={() => openPredictionDialog(match.id)} onShowPredictions={() => openPredictionsDialog(match.id)} />
+                  <MatchCard match={match} prediction={myPredictions[match.id]} now={now} onPredict={() => openPredictionDialog(match.id)} onShowPredictions={() => openPredictionsDialog(match.id)} />
                 </Grid>
               ))}
             </Grid>
