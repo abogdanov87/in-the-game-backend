@@ -5,11 +5,75 @@ export interface UserProfile {
   avatarType: AvatarType;
   avatarColor: string;
   avatarEmoji: string;
-  avatarPhoto: string; // base64 data URL
+  avatarPhoto: string; // base64 data URL or server media URL
   favorites: string[];
 }
 
+export interface AvatarDisplayProfile {
+  nickname: string;
+  avatarType: AvatarType;
+  avatarColor: string;
+  avatarEmoji: string;
+  avatarPhoto: string;
+}
+
 const STORAGE_KEY = 'userProfile';
+
+function normalizeMediaUrl(value?: string | null) {
+  if (!value) return null;
+  if (/^(https?:|data:|blob:|\/)/.test(value)) return value;
+  return `/files/${value}`;
+}
+
+export function resolveAvatarProfile(
+  player: { name: string; avatar?: string | null },
+  profile?: UserProfile,
+): AvatarDisplayProfile {
+  const nickname = profile?.nickname?.trim() || player.name;
+  const serverPhoto = normalizeMediaUrl(player.avatar);
+
+  if (profile?.avatarType === 'emoji' && profile.avatarEmoji) {
+    return {
+      nickname,
+      avatarType: 'emoji',
+      avatarColor: profile.avatarColor,
+      avatarEmoji: profile.avatarEmoji,
+      avatarPhoto: '',
+    };
+  }
+
+  const localDataPhoto = profile?.avatarPhoto?.startsWith('data:') ? profile.avatarPhoto : '';
+  if (profile?.avatarType === 'photo' && localDataPhoto) {
+    return {
+      nickname,
+      avatarType: 'photo',
+      avatarColor: profile.avatarColor,
+      avatarEmoji: profile.avatarEmoji,
+      avatarPhoto: localDataPhoto,
+    };
+  }
+
+  const photo = localDataPhoto
+    || normalizeMediaUrl(profile?.avatarPhoto)
+    || serverPhoto;
+  if (photo) {
+    return {
+      nickname,
+      avatarType: 'photo',
+      avatarColor: profile?.avatarColor ?? '#5a6a8a',
+      avatarEmoji: profile?.avatarEmoji ?? '⚽',
+      avatarPhoto: photo,
+    };
+  }
+
+  return {
+    nickname,
+    avatarType: 'color',
+    avatarColor: profile?.avatarColor ?? '#5a6a8a',
+    avatarEmoji: profile?.avatarEmoji ?? '⚽',
+    avatarPhoto: '',
+  };
+}
 
 export const DEFAULT_PROFILE: UserProfile = {
   nickname: 'Игрок',
@@ -38,11 +102,21 @@ export function saveUserProfile(profile: UserProfile): void {
 export function mergeUserIntoProfile(user: { nickname?: string; username?: string; email?: string; avatar?: string | null }): UserProfile {
   const current = loadUserProfile();
   const fallbackName = user.nickname || user.username || user.email?.split('@')[0] || current.nickname;
-  const updated = {
+  const serverAvatar = normalizeMediaUrl(user.avatar) ?? '';
+  const usingDefaultAvatar = current.avatarType === DEFAULT_PROFILE.avatarType
+    && current.avatarColor === DEFAULT_PROFILE.avatarColor
+    && !current.avatarPhoto.startsWith('data:');
+
+  const updated: UserProfile = {
     ...current,
     nickname: current.nickname === DEFAULT_PROFILE.nickname ? fallbackName : current.nickname,
-    avatarPhoto: current.avatarPhoto || user.avatar || '',
   };
+
+  if (serverAvatar && usingDefaultAvatar) {
+    updated.avatarType = 'photo';
+    updated.avatarPhoto = serverAvatar;
+  }
+
   saveUserProfile(updated);
   return updated;
 }

@@ -535,6 +535,17 @@ class ParticipantShortSerializer(serializers.ModelSerializer):
         return data
 
 
+class ForecastWinnerSerializer(serializers.ModelSerializer):
+    team = TeamSerializer()
+
+    class Meta:
+        model = ForecastWinner
+        fields = (
+            'winner_type',
+            'team',
+        )
+
+
 class ParticipantStatSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     tournament = TournamentShortSerializer()
@@ -554,14 +565,11 @@ class ParticipantStatSerializer(serializers.ModelSerializer):
         )
 
     def get_winner(self, obj):
-        try:
-            fw = ForecastWinner.objects.filter(
-                tournament=obj.tournament.id,
-                user=obj.user.id,
-            ).order_by("winner_type")
-            return [TeamSerializer(fw_team.team).data for fw_team in fw]
-        except:
-            return None
+        qs = ForecastWinner.objects.filter(
+            tournament=obj.tournament_id,
+            user=obj.user_id,
+        ).order_by('winner_type')
+        return ForecastWinnerSerializer(qs, many=True).data
 
     def get_score(self, obj):
         #calculate score for all tournaments

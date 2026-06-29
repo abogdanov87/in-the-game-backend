@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Typography,
-  Avatar,
   Chip,
   Table,
   TableBody,
@@ -40,7 +39,7 @@ import {
   type TournamentSummary,
 } from '../utils/api';
 import { fetchMe } from '../utils/api';
-import { loadUserProfile, type UserProfile } from '../utils/userProfile';
+import { loadUserProfile, resolveAvatarProfile, type UserProfile } from '../utils/userProfile';
 import { PlayerStatsView, UserAvatarDisplay } from './PlayerStatsView';
 
 const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
@@ -49,39 +48,17 @@ const MEDAL_LABELS = ['ЗОЛОТО', 'СЕРЕБРО', 'БРОНЗА'];
 function ParticipantAvatar({
   player,
   size,
-  color = 'text.secondary',
-  bgcolor = '#141928',
   profile,
 }: {
   player: Player;
   size: number;
-  color?: string;
-  bgcolor?: string;
   profile?: UserProfile;
 }) {
-  if (profile) {
-    return <UserAvatarDisplay profile={profile} size={size} />;
-  }
-
-  return (
-    <Avatar
-      src={player.avatar || undefined}
-      imgProps={{ referrerPolicy: 'no-referrer' }}
-      sx={{
-        width: size,
-        height: size,
-        bgcolor,
-        color,
-        fontFamily: '"Barlow Condensed", sans-serif',
-        fontWeight: 800,
-        fontSize: size * 0.35,
-        flexShrink: 0,
-        border: '1px solid rgba(255,255,255,0.12)',
-      }}
-    >
-      {player.name.charAt(0)}
-    </Avatar>
+  const resolved = resolveAvatarProfile(
+    { name: player.name, avatar: player.avatar },
+    profile,
   );
+  return <UserAvatarDisplay profile={resolved} size={size} />;
 }
 
 // Stacked accuracy bar: lime=exact, blue=outcome, amber=diff, rest=wrong
@@ -310,8 +287,6 @@ export function LeaderboardPage() {
               <ParticipantAvatar
                 player={player}
                 size={38}
-                bgcolor={`${MEDAL_COLORS[i]}20`}
-                color={MEDAL_COLORS[i]}
                 profile={player.username === currentUsername ? localProfile : undefined}
               />
 
