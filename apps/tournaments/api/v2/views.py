@@ -95,7 +95,7 @@ class ParticipantListCreateUpdateAPIView(ListBulkCreateUpdateAPIView):
 class ParticipantRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
     queryset = Participant.objects.all()
     serializer_class = ParticipantStatSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
 
 class RuleListCreateUpdateAPIView(ListBulkCreateUpdateAPIView):
@@ -149,7 +149,7 @@ class MatchRetrieveAPIView(generics.RetrieveAPIView):
 class ForecastListCreateAPIView(generics.ListCreateAPIView):
     queryset = Forecast.objects.all()
     serializer_class = ForecastSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, format=None):
         qs = Forecast.objects.filter(
