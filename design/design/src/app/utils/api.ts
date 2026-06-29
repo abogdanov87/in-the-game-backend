@@ -118,6 +118,19 @@ export interface Player {
   tournamentTitle?: string;
 }
 
+export interface TournamentFavorite {
+  winner_type: 'first' | 'second' | 'third';
+  team: TeamShort;
+}
+
+export interface ParticipantDetails {
+  id: number;
+  user: ApiUser;
+  tournament?: TournamentSummary;
+  winner: TournamentFavorite[];
+  score: ParticipantScore;
+}
+
 export interface UiMatch {
   id: number;
   homeTeam: string;
@@ -248,6 +261,10 @@ export function updateForecast(forecastId: number, score_home: number, score_awa
 
 export function fetchMatchDetails(matchId: number) {
   return request<MatchDetails>(`/api/v2/match/${matchId}/`);
+}
+
+export function fetchParticipant(participantId: number) {
+  return request<ParticipantDetails>(`/api/v2/participant/${participantId}/`);
 }
 
 export function participantToPlayer(participant: TournamentParticipant, tournamentTitle?: string): Player {
