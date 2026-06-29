@@ -56,6 +56,7 @@ urlpatterns = [
     path('djrichtextfield/', include('djrichtextfield.urls')),
     path('', include('tournaments.urls', namespace='tournaments')),
     path('', include('common.urls', namespace='common')),
+    url(r'^legacy/$', RedirectView.as_view(url='/', permanent=False), name='legacy_index'),
     url(r'^$', TemplateView.as_view(template_name='index.html'), name='index'),
 ]
 

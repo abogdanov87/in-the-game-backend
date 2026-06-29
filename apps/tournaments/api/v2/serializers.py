@@ -555,11 +555,11 @@ class ParticipantStatSerializer(serializers.ModelSerializer):
 
     def get_winner(self, obj):
         try:
-            fw = ForecastWinner.objects.get(
+            fw = ForecastWinner.objects.filter(
                 tournament=obj.tournament.id,
                 user=obj.user.id,
-            )
-            return TeamSerializer(fw.team).data
+            ).order_by("winner_type")
+            return [TeamSerializer(fw_team.team).data for fw_team in fw]
         except:
             return None
 
