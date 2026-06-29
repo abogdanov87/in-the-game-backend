@@ -16,7 +16,6 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
-  Avatar,
   Divider,
   Tooltip,
 } from '@mui/material';
@@ -29,8 +28,9 @@ import {
   Close as CloseIcon,
   AccountCircle as ProfileIcon,
 } from '@mui/icons-material';
-import { loadUserProfile, type UserProfile } from '../utils/userProfile';
+import { loadUserProfile, resolveAvatarProfile, type UserProfile } from '../utils/userProfile';
 import { clearTokens } from '../utils/api';
+import { UserAvatarDisplay } from './PlayerStatsView';
 
 const drawerWidth = 260;
 
@@ -47,36 +47,9 @@ const pageTitles: Record<string, string> = {
   '/profile': 'Мой профиль',
 };
 
-// Renders the user's avatar based on their avatarType
 function UserAvatar({ profile, size = 32 }: { profile: UserProfile; size?: number }) {
-  const fontSize = size * 0.45;
-
-  if (profile.avatarType === 'photo' && profile.avatarPhoto) {
-    return (
-      <Avatar
-        src={profile.avatarPhoto}
-        sx={{ width: size, height: size, border: `1px solid ${profile.avatarColor}50`, flexShrink: 0 }}
-      />
-    );
-  }
-
-  if (profile.avatarType === 'emoji' && profile.avatarEmoji) {
-    return (
-      <Avatar
-        sx={{ width: size, height: size, bgcolor: profile.avatarColor, border: `1px solid ${profile.avatarColor}60`, fontSize: fontSize * 1.3, flexShrink: 0 }}
-      >
-        {profile.avatarEmoji}
-      </Avatar>
-    );
-  }
-
-  return (
-    <Avatar
-      sx={{ width: size, height: size, bgcolor: profile.avatarColor, color: '#080b14', fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800, fontSize, flexShrink: 0 }}
-    >
-      {profile.nickname.charAt(0).toUpperCase()}
-    </Avatar>
-  );
+  const resolved = resolveAvatarProfile({ name: profile.nickname, avatar: null }, profile);
+  return <UserAvatarDisplay profile={resolved} size={size} />;
 }
 
 export function Layout() {

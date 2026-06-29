@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Box, Typography, Grid, Avatar, LinearProgress, Chip,
   IconButton, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Tooltip, Tabs, Tab,
+  DialogActions, TextField, Tooltip, Tabs, Tab, CircularProgress,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon, Stars as StarsIcon,
@@ -19,11 +19,11 @@ import {
   BarChart, Bar, Cell,
 } from 'recharts';
 import {
-  teamColors, playerFavorites,
   playerTournamentStats, type TournamentStats,
 } from '../utils/mockData';
-import type { Player } from '../utils/api';
-import { type UserProfile, type AvatarType, saveUserProfile, resizeImage } from '../utils/userProfile';
+import type { Player, TournamentFavorite } from '../utils/api';
+import { fetchParticipant, normalizeMediaUrl } from '../utils/api';
+import { type UserProfile, type AvatarType, saveUserProfile, resizeImage, resolveAvatarProfile, type AvatarDisplayProfile } from '../utils/userProfile';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const AVATAR_COLORS = [
@@ -42,13 +42,13 @@ const AVATAR_EMOJIS = [
 // ─── Shared avatar renderer ───────────────────────────────────────────────────
 
 export function UserAvatarDisplay({ profile, size = 40 }: {
-  profile: { avatarType: AvatarType; avatarColor: string; avatarEmoji: string; avatarPhoto: string; nickname: string };
+  profile: AvatarDisplayProfile;
   size?: number;
 }) {
   const fontSize = size * 0.42;
 
   if (profile.avatarType === 'photo' && profile.avatarPhoto) {
-    return <Avatar src={profile.avatarPhoto} sx={{ width: size, height: size, border: `2px solid ${profile.avatarColor}50`, flexShrink: 0 }} />;
+    return <Avatar src={profile.avatarPhoto} imgProps={{ referrerPolicy: 'no-referrer' }} sx={{ width: size, height: size, border: `2px solid ${profile.avatarColor}50`, flexShrink: 0 }} />;
   }
   if (profile.avatarType === 'emoji' && profile.avatarEmoji) {
     // Emoji sits on the chosen color background, same as the letter variant
@@ -140,21 +140,46 @@ function StatCard({ title, value, subtitle, icon, accentColor, bgColor }: {
 
 // ─── Read-only favorites ──────────────────────────────────────────────────────
 
-function FavoritesReadOnly({ playerId, favorites }: { playerId: number; favorites?: string[] }) {
-  const favs = favorites ?? playerFavorites[playerId] ?? [];
-  if (!favs.length) return <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>Фавориты не выбраны</Typography>;
+const WINNER_TYPE_LABELS: Record<TournamentFavorite['winner_type'], string> = {
+  first: '1-й фаворит',
+  second: '2-й фаворит',
+  third: '3-й фаворит',
+};
+
+function favoriteAccent(index: number) {
+  return index === 0 ? '#c4f135' : index === 1 ? '#38bdf8' : '#f59e0b';
+}
+
+function FavoritesReadOnly({ favorites, loading }: { favorites: TournamentFavorite[]; loading?: boolean }) {
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+        <CircularProgress size={22} />
+      </Box>
+    );
+  }
+  if (!favorites.length) {
+    return <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>Фавориты не выбраны</Typography>;
+  }
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-      {favs.map((team, i) => {
-        const color = teamColors[team] ?? '#1a2240';
+      {favorites.map((item, i) => {
+        const team = item.team;
+        const accent = favoriteAccent(i);
+        const badge = normalizeMediaUrl(team.badge);
         return (
-          <Box key={team} sx={{ display: 'flex', alignItems: 'center', gap: 1.25, p: 1.25, borderRadius: 1, bgcolor: i === 0 ? 'rgba(196,241,53,0.05)' : '#141928', border: `1px solid ${i === 0 ? 'rgba(196,241,53,0.15)' : 'rgba(26,34,64,0.8)'}` }}>
-            <Box sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: i === 0 ? 'rgba(196,241,53,0.15)' : 'rgba(26,34,64,0.8)', border: `1px solid ${i === 0 ? 'rgba(196,241,53,0.4)' : 'rgba(26,34,64,0.8)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 700, fontSize: '0.6rem', color: i === 0 ? 'primary.main' : 'text.secondary', lineHeight: 1 }}>{i + 1}</Typography>
+          <Box key={`${item.winner_type}-${team.id}`} sx={{ display: 'flex', alignItems: 'center', gap: 1.25, p: 1.25, borderRadius: 1, bgcolor: i === 0 ? 'rgba(196,241,53,0.05)' : '#141928', border: `1px solid ${i === 0 ? 'rgba(196,241,53,0.15)' : 'rgba(26,34,64,0.8)'}` }}>
+            <Box sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: `${accent}22`, border: `1px solid ${accent}66`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 700, fontSize: '0.6rem', color: accent, lineHeight: 1 }}>{i + 1}</Typography>
             </Box>
-            <Avatar sx={{ width: 26, height: 26, bgcolor: color, fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800, fontSize: '0.6rem', border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>{team.slice(0, 3).toUpperCase()}</Avatar>
-            <Typography variant="body2" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, fontSize: '0.95rem' }}>{team}</Typography>
-            {i === 0 && <StarIcon sx={{ fontSize: '0.75rem', color: '#FFD700', ml: 'auto' }} />}
+            <Avatar src={badge ?? undefined} sx={{ width: 26, height: 26, bgcolor: '#1a2240', fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800, fontSize: '0.6rem', border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+              {(team.short_title || team.title).slice(0, 3).toUpperCase()}
+            </Avatar>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography variant="body2" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, fontSize: '0.95rem' }} noWrap>{team.title}</Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.68rem' }}>{WINNER_TYPE_LABELS[item.winner_type]}</Typography>
+            </Box>
+            {i === 0 && <StarIcon sx={{ fontSize: '0.75rem', color: '#FFD700', flexShrink: 0 }} />}
           </Box>
         );
       })}
@@ -288,13 +313,11 @@ export function PlayerStatsView({ player, rank, profile, onProfileChange }: Play
   const [activeBar, setActiveBar] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState<string | null>(null);
+  const [tournamentFavorites, setTournamentFavorites] = useState<TournamentFavorite[]>([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(true);
+  const [participantAvatar, setParticipantAvatar] = useState<string | null>(player.avatar ?? null);
 
-  const nickname     = profile?.nickname     ?? player.name;
-  const avatarType   = profile?.avatarType   ?? 'color';
-  const avatarColor  = profile?.avatarColor  ?? '#5a6a8a';
-  const avatarEmoji  = profile?.avatarEmoji  ?? '⚽';
-  const avatarPhoto  = profile?.avatarPhoto || player.avatar || '';
-  const favorites    = profile?.favorites    ?? [];
+  const nickname = profile?.nickname ?? player.name;
 
   const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
   const medalColor  = rank <= 3 ? medalColors[rank - 1] : undefined;
@@ -308,7 +331,33 @@ export function PlayerStatsView({ player, rank, profile, onProfileChange }: Play
   const weeklyData  = getWeeklyData(stats.points, accuracy);
   const categories  = getCategories(stats);
 
-  const avatarProfile = { avatarType, avatarColor, avatarEmoji, avatarPhoto, nickname };
+  const avatarProfile = resolveAvatarProfile(
+    { name: player.name, avatar: participantAvatar ?? player.avatar },
+    isOwnProfile ? profile : undefined,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setFavoritesLoading(true);
+    fetchParticipant(player.id)
+      .then((data) => {
+        if (!cancelled) {
+          setTournamentFavorites(data.winner ?? []);
+          if (data.user?.avatar) {
+            setParticipantAvatar(normalizeMediaUrl(data.user.avatar));
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTournamentFavorites([]);
+      })
+      .finally(() => {
+        if (!cancelled) setFavoritesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [player.id]);
 
   const handleSaveAvatar = (data: Pick<UserProfile, 'nickname' | 'avatarType' | 'avatarColor' | 'avatarEmoji' | 'avatarPhoto'>) => {
     if (!profile || !onProfileChange) return;
@@ -497,12 +546,12 @@ export function PlayerStatsView({ player, rank, profile, onProfileChange }: Play
             <Typography variant="h6" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.04em' }}>КОМАНДЫ-ФАВОРИТЫ</Typography>
           </Box>
         </Box>
-        <FavoritesReadOnly playerId={player.id} favorites={isOwnProfile ? favorites : undefined} />
+        <FavoritesReadOnly favorites={tournamentFavorites} loading={favoritesLoading} />
       </Box>
 
       {/* ── Dialogs ─────────────────────────────────────────────────── */}
       {isOwnProfile && (
-        <AvatarEditorDialog open={editOpen} initial={{ nickname, avatarType, avatarColor, avatarEmoji, avatarPhoto }} onSave={handleSaveAvatar} onClose={() => setEditOpen(false)} />
+        <AvatarEditorDialog open={editOpen} initial={{ nickname, avatarType: avatarProfile.avatarType, avatarColor: avatarProfile.avatarColor, avatarEmoji: avatarProfile.avatarEmoji, avatarPhoto: avatarProfile.avatarPhoto }} onSave={handleSaveAvatar} onClose={() => setEditOpen(false)} />
       )}
     </Box>
   );
