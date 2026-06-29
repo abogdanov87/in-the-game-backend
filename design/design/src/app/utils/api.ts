@@ -36,12 +36,21 @@ export interface TournamentParticipant {
   score: ParticipantScore;
 }
 
+export interface TournamentRule {
+  id: number;
+  rule_type: string;
+  tournament: number;
+  points: number;
+  active: boolean;
+}
+
 export interface TournamentTable {
   id: number;
   title: string;
   logo?: string | null;
   active: boolean;
   tournament_participant: TournamentParticipant[];
+  tournament_rules?: TournamentRule[];
 }
 
 export interface TeamShort {
@@ -265,6 +274,82 @@ export function fetchMatchDetails(matchId: number) {
 
 export function fetchParticipant(participantId: number) {
   return request<ParticipantDetails>(`/api/v2/participant/${participantId}/`);
+}
+
+const SCORING_RULE_ORDER = [
+  'exact result',
+  'match result',
+  'goals difference',
+  'winner1',
+  'winner2',
+  'winner3',
+  'winner',
+] as const;
+
+const SCORING_RULE_META: Record<string, { label: string; color: string }> = {
+  'exact result': { label: 'Точный счёт', color: '#c4f135' },
+  'match result': { label: 'Правильный исход', color: '#38bdf8' },
+  'goals difference': { label: 'Правильная разница', color: '#f59e0b' },
+  winner1: { label: '1-й фаворит турнира', color: '#FFD700' },
+  winner2: { label: '2-й фаворит турнира', color: '#C0C0C0' },
+  winner3: { label: '3-й фаворит турнира', color: '#CD7F32' },
+  winner: { label: 'Победитель турнира', color: '#FFD700' },
+};
+
+export function formatRulePoints(points: number) {
+  return Number.isInteger(points) ? String(points) : points.toFixed(1);
+}
+
+export function scoringLegendFromRules(rules: TournamentRule[] | undefined) {
+  if (!rules?.length) return [];
+
+  const rulesByType = new Map(rules.filter((rule) => rule.active).map((rule) => [rule.rule_type, rule.points]));
+
+  return SCORING_RULE_ORDER
+    .filter((ruleType) => rulesByType.has(ruleType))
+    .map((ruleType) => ({
+      label: SCORING_RULE_META[ruleType]?.label ?? ruleType,
+      points: rulesByType.get(ruleType) ?? 0,
+      color: SCORING_RULE_META[ruleType]?.color ?? '#5a6a8a',
+    }));
+}
+
+export type ForecastOutcome = 'exact' | 'outcome' | 'diff' | 'wrong';
+
+const FORECAST_OUTCOME_CHIP_STYLES: Record<ForecastOutcome, { color: string; bgcolor: string; border: string }> = {
+  exact: { color: '#c4f135', bgcolor: 'rgba(196,241,53,0.12)', border: 'rgba(196,241,53,0.3)' },
+  outcome: { color: '#38bdf8', bgcolor: 'rgba(56,189,248,0.12)', border: 'rgba(56,189,248,0.3)' },
+  diff: { color: '#f59e0b', bgcolor: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' },
+  wrong: { color: '#5a6a8a', bgcolor: 'rgba(90,106,138,0.12)', border: 'rgba(90,106,138,0.3)' },
+};
+
+export function getForecastOutcome(score?: ParticipantScore): ForecastOutcome {
+  if (!score) return 'wrong';
+  if (score.exact_result > 0) return 'exact';
+  if (score.goals_difference > 0) return 'diff';
+  if (score.match_result > 0) return 'outcome';
+  return 'wrong';
+}
+
+export function getMatchForecastPoints(score?: ParticipantScore) {
+  if (!score) return 0;
+  return score.points - (score.tournament_bonuses ?? 0);
+}
+
+export function getForecastPointsChipProps(outcome: ForecastOutcome, points: number) {
+  const style = FORECAST_OUTCOME_CHIP_STYLES[outcome];
+  const label = points > 0 ? `+${formatRulePoints(points)}` : '0';
+  return {
+    label: outcome === 'exact' && points > 0 ? `⭐ ${label}` : label,
+    sx: {
+      bgcolor: style.bgcolor,
+      color: style.color,
+      border: `1px solid ${style.border}`,
+      fontFamily: '"JetBrains Mono", monospace',
+      fontWeight: 600,
+      height: 22,
+    },
+  };
 }
 
 export function participantToPlayer(participant: TournamentParticipant, tournamentTitle?: string): Player {

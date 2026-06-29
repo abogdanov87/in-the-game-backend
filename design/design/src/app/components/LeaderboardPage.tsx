@@ -35,7 +35,10 @@ import {
   fetchTournamentTable,
   fetchTournaments,
   participantToPlayer,
+  scoringLegendFromRules,
+  formatRulePoints,
   type Player,
+  type TournamentRule,
   type TournamentSummary,
 } from '../utils/api';
 import { fetchMe } from '../utils/api';
@@ -138,6 +141,7 @@ export function LeaderboardPage() {
   const [tournaments, setTournaments] = useState<TournamentSummary[]>([]);
   const [selectedTournamentId, setSelectedTournamentId] = useState<number | ''>('');
   const [players, setPlayers] = useState<Player[]>([]);
+  const [scoringRules, setScoringRules] = useState<TournamentRule[]>([]);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [localProfile, setLocalProfile] = useState<UserProfile>(loadUserProfile);
   const [loading, setLoading] = useState(true);
@@ -186,6 +190,7 @@ export function LeaderboardPage() {
       .then((table) => {
         if (cancelled) return;
         setPlayers(table.tournament_participant.map((participant) => participantToPlayer(participant, table.title)));
+        setScoringRules(table.tournament_rules ?? []);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Не удалось загрузить таблицу');
@@ -202,6 +207,7 @@ export function LeaderboardPage() {
     () => tournaments.find((tournament) => tournament.id === selectedTournamentId),
     [selectedTournamentId, tournaments],
   );
+  const scoringLegend = useMemo(() => scoringLegendFromRules(scoringRules), [scoringRules]);
   const top3 = players.slice(0, 3);
   const rest = players.slice(3);
 
@@ -382,18 +388,14 @@ export function LeaderboardPage() {
       </Box>}
 
       {/* Scoring legend */}
-      {!loading && players.length > 0 && <Box sx={{ mt: 3, p: 2, borderRadius: 1.5, bgcolor: '#141928', border: '1px solid rgba(26,34,64,0.8)' }}>
+      {!loading && players.length > 0 && scoringLegend.length > 0 && <Box sx={{ mt: 3, p: 2, borderRadius: 1.5, bgcolor: '#141928', border: '1px solid rgba(26,34,64,0.8)' }}>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1.5, sm: 3 }, alignItems: 'center' }}>
           <TrophyIcon sx={{ fontSize: '1rem', color: 'text.secondary', flexShrink: 0 }} />
-          {[
-            { label: 'Точный счёт', pts: 5, color: '#c4f135' },
-            { label: 'Правильный исход', pts: 3, color: '#38bdf8' },
-            { label: 'Правильная разница', pts: 2, color: '#f59e0b' },
-          ].map((s) => (
+          {scoringLegend.map((s) => (
             <Box key={s.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{ width: 8, height: 8, borderRadius: 0.5, bgcolor: s.color }} />
               <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.73rem' }}>
-                <strong style={{ color: s.color }}>{s.pts} очков</strong> — {s.label}
+                <strong style={{ color: s.color }}>{formatRulePoints(s.points)} очков</strong> — {s.label}
               </Typography>
             </Box>
           ))}

@@ -42,7 +42,11 @@ import {
   fetchMatchesWithForecasts,
   fetchTournamentMatches,
   fetchTournaments,
+  getForecastOutcome,
+  getForecastPointsChipProps,
+  getMatchForecastPoints,
   updateForecast,
+  type ForecastOutcome,
   type ForecastShort,
   type TournamentSummary,
   type UiMatch,
@@ -61,6 +65,7 @@ interface PredictionRow {
   homeScore: number;
   awayScore: number;
   points: number;
+  outcome: ForecastOutcome;
 }
 
 function TabPanel({ children, value, index }: { children: ReactNode; value: number; index: number }) {
@@ -224,7 +229,7 @@ export function MatchesPage() {
   const [matches, setMatches] = useState<UiMatch[]>([]);
   const [myPredictions, setMyPredictions] = useState<Record<number, LocalPrediction>>({});
   const [tabValue, setTabValue] = useState(0);
-  const [sortDesc, setSortDesc] = useState(true);
+  const [sortAscending, setSortAscending] = useState(true);
   const [predictionDialog, setPredictionDialog] = useState<number | null>(null);
   const [predictionsDialog, setPredictionsDialog] = useState<number | null>(null);
   const [tempPrediction, setTempPrediction] = useState({ homeScore: 0, awayScore: 0 });
@@ -299,13 +304,17 @@ export function MatchesPage() {
     };
   }, [selectedTournamentId]);
 
+  useEffect(() => {
+    setSortAscending(tabValue === 0);
+  }, [tabValue]);
+
   const selectedTournament = useMemo(
     () => tournaments.find((tournament) => tournament.id === selectedTournamentId),
     [selectedTournamentId, tournaments],
   );
-  const sortFn = (a: UiMatch, b: UiMatch) => sortDesc
-    ? new Date(b.date).getTime() - new Date(a.date).getTime()
-    : new Date(a.date).getTime() - new Date(b.date).getTime();
+  const sortFn = (a: UiMatch, b: UiMatch) => sortAscending
+    ? new Date(a.date).getTime() - new Date(b.date).getTime()
+    : new Date(b.date).getTime() - new Date(a.date).getTime();
   const completedMatches = [...matches].filter((match) => match.status === 'completed').sort(sortFn);
   const upcomingMatches = [...matches].filter((match) => match.status !== 'completed').sort(sortFn);
   const currentDialogMatch = predictionDialog !== null ? matches.find((match) => match.id === predictionDialog) : null;
@@ -352,13 +361,16 @@ export function MatchesPage() {
       const details = await fetchMatchDetails(matchId);
       setMatchPredictions(details.forecasts.flatMap((forecast) => {
         if (!isValidForecast(forecast)) return [];
+        const outcome = getForecastOutcome(forecast.score);
+        const points = getMatchForecastPoints(forecast.score);
         return [{
           id: forecast.id,
           playerName: forecast.user.nickname || forecast.user.username || forecast.user.email || `Участник ${forecast.id}`,
           avatar: forecast.user.avatar,
           homeScore: forecast.score_home,
           awayScore: forecast.score_away,
-          points: forecast.score?.points ?? 0,
+          points,
+          outcome,
         }];
       }));
     } catch (err) {
@@ -394,8 +406,8 @@ export function MatchesPage() {
               <Tab icon={<ScheduleIcon sx={{ fontSize: '1rem' }} />} iconPosition="start" label={`Предстоящие (${upcomingMatches.length})`} sx={{ minHeight: 48, gap: 0.75 }} />
               <Tab icon={<CheckIcon sx={{ fontSize: '1rem' }} />} iconPosition="start" label={`Завершённые (${completedMatches.length})`} sx={{ minHeight: 48, gap: 0.75 }} />
             </Tabs>
-            <Button size="small" onClick={() => setSortDesc((value) => !value)} startIcon={sortDesc ? <ArrowDownIcon sx={{ fontSize: '0.9rem' }} /> : <ArrowUpIcon sx={{ fontSize: '0.9rem' }} />} sx={{ color: 'text.secondary', border: '1px solid rgba(26,34,64,0.8)', borderRadius: 1, fontSize: '0.72rem' }}>
-              {sortDesc ? 'Новые' : 'Старые'}
+            <Button size="small" onClick={() => setSortAscending((value) => !value)} startIcon={sortAscending ? <ArrowUpIcon sx={{ fontSize: '0.9rem' }} /> : <ArrowDownIcon sx={{ fontSize: '0.9rem' }} />} sx={{ color: 'text.secondary', border: '1px solid rgba(26,34,64,0.8)', borderRadius: 1, fontSize: '0.72rem' }}>
+              {sortAscending ? 'Старые' : 'Новые'}
             </Button>
           </Box>
 
@@ -490,7 +502,10 @@ export function MatchesPage() {
                         <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600 }}>{prediction.homeScore}:{prediction.awayScore}</Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Chip label={prediction.points > 0 ? `+${prediction.points}` : '0'} size="small" color={prediction.points > 0 ? 'primary' : 'default'} sx={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, height: 22 }} />
+                        {(() => {
+                          const chip = getForecastPointsChipProps(prediction.outcome, prediction.points);
+                          return <Chip label={chip.label} size="small" sx={chip.sx} />;
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))}
