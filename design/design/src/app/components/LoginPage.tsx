@@ -173,7 +173,7 @@ export function LoginPage() {
               mb: 1,
             }}
           >
-            ПРОГНОЗЫ
+            FOOTBET
           </Typography>
           <Typography
             variant="body2"

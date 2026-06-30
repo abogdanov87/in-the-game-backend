@@ -52,6 +52,27 @@ function UserAvatar({ profile, size = 32 }: { profile: UserProfile; size?: numbe
   return <UserAvatarDisplay profile={resolved} size={size} />;
 }
 
+function BrandTitle({ compact = false }: { compact?: boolean }) {
+  return (
+    <Box sx={{ minWidth: 0, flexShrink: 0 }}>
+      <Typography
+        component="div"
+        sx={{
+          fontFamily: '"Barlow Condensed", sans-serif',
+          fontWeight: 800,
+          color: '#c4f135',
+          letterSpacing: '0.06em',
+          lineHeight: 1,
+          fontSize: compact ? '1.2rem' : '1.75rem',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        FOOTBET
+      </Typography>
+    </Box>
+  );
+}
+
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profile, setProfile] = useState<UserProfile>(loadUserProfile);
@@ -96,15 +117,8 @@ export function Layout() {
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Logo */}
-      <Box sx={{ px: 3, py: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800, color: 'primary.main', letterSpacing: '0.04em', lineHeight: 1, fontSize: '1.75rem' }}>
-            ПРОГНОЗЫ
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary', letterSpacing: '0.12em', textTransform: 'uppercase', fontSize: '0.65rem' }}>
-            Футбол · Сезон 2026
-          </Typography>
-        </Box>
+      <Box sx={{ px: 3, py: 3, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
+        <BrandTitle />
         {isMobile && (
           <IconButton onClick={() => setMobileOpen(false)} size="small" sx={{ color: 'text.secondary' }}>
             <CloseIcon />
@@ -202,10 +216,21 @@ export function Layout() {
               <MenuIcon />
             </IconButton>
           )}
-          <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main', mr: 1.5, display: { xs: 'none', md: 'block' }, boxShadow: '0 0 8px rgba(196,241,53,0.6)' }} />
-          <Typography variant="h5" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, letterSpacing: '0.04em', color: 'text.primary', fontSize: { xs: '1.1rem', md: '1.3rem' } }}>
-            {pageTitle}
-          </Typography>
+          {isMobile ? (
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <BrandTitle compact />
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', letterSpacing: '0.04em', display: 'block', mt: 0.25 }} noWrap>
+                {pageTitle}
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main', mr: 1.5, boxShadow: '0 0 8px rgba(196,241,53,0.6)' }} />
+              <Typography variant="h5" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, letterSpacing: '0.04em', color: 'text.primary', fontSize: '1.3rem' }}>
+                {pageTitle}
+              </Typography>
+            </>
+          )}
           <Box sx={{ flex: 1 }} />
           {/* Desktop: avatar navigates to profile */}
           {!isMobile && (
