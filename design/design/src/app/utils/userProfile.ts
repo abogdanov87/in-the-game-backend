@@ -5,7 +5,7 @@ export interface UserProfile {
   avatarType: AvatarType;
   avatarColor: string;
   avatarEmoji: string;
-  avatarPhoto: string; // base64 data URL or server media URL
+  avatarPhoto: string; // server media URL or base64 data URL before save
   favorites: string[];
 }
 
@@ -17,6 +17,16 @@ export interface AvatarDisplayProfile {
   avatarPhoto: string;
 }
 
+export interface AvatarUserSource {
+  nickname?: string | null;
+  username?: string;
+  email?: string;
+  avatar?: string | null;
+  avatar_type?: AvatarType | string | null;
+  avatar_color?: string | null;
+  avatar_emoji?: string | null;
+}
+
 const STORAGE_KEY = 'userProfile';
 
 function normalizeMediaUrl(value?: string | null) {
@@ -25,52 +35,41 @@ function normalizeMediaUrl(value?: string | null) {
   return `/files/${value}`;
 }
 
-export function resolveAvatarProfile(
-  player: { name: string; avatar?: string | null },
-  profile?: UserProfile,
-): AvatarDisplayProfile {
-  const nickname = profile?.nickname?.trim() || player.name;
-  const serverPhoto = normalizeMediaUrl(player.avatar);
+export function resolveAvatarProfile(source: AvatarUserSource): AvatarDisplayProfile {
+  const nickname = source.nickname?.trim()
+    || source.username
+    || source.email?.split('@')[0]
+    || 'Игрок';
+  const serverPhoto = normalizeMediaUrl(source.avatar);
 
-  if (profile?.avatarType === 'emoji' && profile.avatarEmoji) {
+  if (serverPhoto) {
+    return {
+      nickname,
+      avatarType: 'photo',
+      avatarColor: source.avatar_color || '#c4f135',
+      avatarEmoji: source.avatar_emoji || '⚽',
+      avatarPhoto: serverPhoto,
+    };
+  }
+
+  const color = source.avatar_color || '#c4f135';
+  const emoji = source.avatar_emoji || '⚽';
+
+  if (source.avatar_type === 'emoji' && source.avatar_emoji) {
     return {
       nickname,
       avatarType: 'emoji',
-      avatarColor: profile.avatarColor,
-      avatarEmoji: profile.avatarEmoji,
+      avatarColor: color,
+      avatarEmoji: emoji,
       avatarPhoto: '',
-    };
-  }
-
-  const localDataPhoto = profile?.avatarPhoto?.startsWith('data:') ? profile.avatarPhoto : '';
-  if (profile?.avatarType === 'photo' && localDataPhoto) {
-    return {
-      nickname,
-      avatarType: 'photo',
-      avatarColor: profile.avatarColor,
-      avatarEmoji: profile.avatarEmoji,
-      avatarPhoto: localDataPhoto,
-    };
-  }
-
-  const photo = localDataPhoto
-    || normalizeMediaUrl(profile?.avatarPhoto)
-    || serverPhoto;
-  if (photo) {
-    return {
-      nickname,
-      avatarType: 'photo',
-      avatarColor: profile?.avatarColor ?? '#5a6a8a',
-      avatarEmoji: profile?.avatarEmoji ?? '⚽',
-      avatarPhoto: photo,
     };
   }
 
   return {
     nickname,
     avatarType: 'color',
-    avatarColor: profile?.avatarColor ?? '#5a6a8a',
-    avatarEmoji: profile?.avatarEmoji ?? '⚽',
+    avatarColor: color,
+    avatarEmoji: emoji,
     avatarPhoto: '',
   };
 }
@@ -99,26 +98,28 @@ export function saveUserProfile(profile: UserProfile): void {
   } catch {}
 }
 
-export function mergeUserIntoProfile(user: { nickname?: string; username?: string; email?: string; avatar?: string | null }): UserProfile {
+export function mergeUserIntoProfile(user: AvatarUserSource & { nickname?: string; username?: string; email?: string; avatar?: string | null }): UserProfile {
   const current = loadUserProfile();
-  const fallbackName = user.nickname || user.username || user.email?.split('@')[0] || current.nickname;
-  const serverAvatar = normalizeMediaUrl(user.avatar) ?? '';
-  const usingDefaultAvatar = current.avatarType === DEFAULT_PROFILE.avatarType
-    && current.avatarColor === DEFAULT_PROFILE.avatarColor
-    && !current.avatarPhoto.startsWith('data:');
+  const serverPhoto = normalizeMediaUrl(user.avatar) ?? '';
 
-  const updated: UserProfile = {
+  return {
     ...current,
-    nickname: current.nickname === DEFAULT_PROFILE.nickname ? fallbackName : current.nickname,
+    nickname: user.nickname?.trim() || user.username || user.email?.split('@')[0] || current.nickname,
+    avatarType: (user.avatar_type as AvatarType) || 'color',
+    avatarColor: user.avatar_color || DEFAULT_PROFILE.avatarColor,
+    avatarEmoji: user.avatar_emoji || DEFAULT_PROFILE.avatarEmoji,
+    avatarPhoto: serverPhoto,
   };
+}
 
-  if (serverAvatar && usingDefaultAvatar) {
-    updated.avatarType = 'photo';
-    updated.avatarPhoto = serverAvatar;
-  }
-
-  saveUserProfile(updated);
-  return updated;
+export function avatarSourceFromProfile(profile: UserProfile): AvatarUserSource {
+  return {
+    nickname: profile.nickname,
+    avatar: profile.avatarPhoto || null,
+    avatar_type: profile.avatarType,
+    avatar_color: profile.avatarColor,
+    avatar_emoji: profile.avatarEmoji,
+  };
 }
 
 /** Resize and center-crop an image File to a square base64 JPEG */
@@ -144,4 +145,15 @@ export function resizeImage(file: File, maxPx = 300): Promise<string> {
     };
     reader.readAsDataURL(file);
   });
+}
+
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, data] = dataUrl.split(',');
+  const mime = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
 }

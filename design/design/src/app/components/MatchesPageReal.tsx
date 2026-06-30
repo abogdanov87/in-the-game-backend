@@ -45,12 +45,15 @@ import {
   getForecastOutcome,
   getForecastPointsChipProps,
   getMatchForecastPoints,
+  normalizeMediaUrl,
   updateForecast,
   type ForecastOutcome,
   type ForecastShort,
   type TournamentSummary,
   type UiMatch,
 } from '../utils/api';
+import { resolveAvatarProfile, type AvatarUserSource } from '../utils/userProfile';
+import { UserAvatarDisplay } from './PlayerStatsView';
 
 interface LocalPrediction {
   id?: number;
@@ -61,7 +64,7 @@ interface LocalPrediction {
 interface PredictionRow {
   id: number;
   playerName: string;
-  avatar?: string | null;
+  avatarSource: AvatarUserSource;
   homeScore: number;
   awayScore: number;
   points: number;
@@ -366,7 +369,15 @@ export function MatchesPage() {
         return [{
           id: forecast.id,
           playerName: forecast.user.nickname || forecast.user.username || forecast.user.email || `Участник ${forecast.id}`,
-          avatar: forecast.user.avatar,
+          avatarSource: {
+            nickname: forecast.user.nickname,
+            username: forecast.user.username,
+            email: forecast.user.email,
+            avatar: normalizeMediaUrl(forecast.user.avatar),
+            avatar_type: forecast.user.avatar_type,
+            avatar_color: forecast.user.avatar_color,
+            avatar_emoji: forecast.user.avatar_emoji,
+          },
           homeScore: forecast.score_home,
           awayScore: forecast.score_away,
           points,
@@ -492,9 +503,7 @@ export function MatchesPage() {
                     <TableRow key={prediction.id}>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                          <Avatar src={prediction.avatar || undefined} sx={{ width: 24, height: 24, bgcolor: '#141928', color: 'text.secondary', fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, fontSize: '0.7rem' }}>
-                            {prediction.playerName.charAt(0)}
-                          </Avatar>
+                          <UserAvatarDisplay profile={resolveAvatarProfile(prediction.avatarSource)} size={24} />
                           <Typography variant="body2" sx={{ fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{prediction.playerName}</Typography>
                         </Box>
                       </TableCell>

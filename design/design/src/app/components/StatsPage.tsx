@@ -67,6 +67,7 @@ export function StatsPage() {
           rank={rank}
           profile={profile}
           onProfileChange={setProfile}
+          onPlayerChange={(updates) => setCurrentPlayer((prev) => (prev ? { ...prev, ...updates } : prev))}
         />
       )}
       {!loading && !currentPlayer && !error && (

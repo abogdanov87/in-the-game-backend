@@ -42,25 +42,22 @@ import {
   type TournamentSummary,
 } from '../utils/api';
 import { fetchMe } from '../utils/api';
-import { loadUserProfile, resolveAvatarProfile, type UserProfile } from '../utils/userProfile';
+import { resolveAvatarProfile } from '../utils/userProfile';
 import { PlayerStatsView, UserAvatarDisplay } from './PlayerStatsView';
 
 const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
 const MEDAL_LABELS = ['ЗОЛОТО', 'СЕРЕБРО', 'БРОНЗА'];
 
-function ParticipantAvatar({
-  player,
-  size,
-  profile,
-}: {
-  player: Player;
-  size: number;
-  profile?: UserProfile;
-}) {
-  const resolved = resolveAvatarProfile(
-    { name: player.name, avatar: player.avatar },
-    profile,
-  );
+function ParticipantAvatar({ player, size }: { player: Player; size: number }) {
+  const resolved = resolveAvatarProfile({
+    nickname: player.name,
+    username: player.username,
+    email: player.email,
+    avatar: player.avatar,
+    avatar_type: player.avatarType,
+    avatar_color: player.avatarColor,
+    avatar_emoji: player.avatarEmoji,
+  });
   return <UserAvatarDisplay profile={resolved} size={size} />;
 }
 
@@ -143,7 +140,6 @@ export function LeaderboardPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [scoringRules, setScoringRules] = useState<TournamentRule[]>([]);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
-  const [localProfile, setLocalProfile] = useState<UserProfile>(loadUserProfile);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
@@ -160,7 +156,6 @@ export function LeaderboardPage() {
         if (cancelled) return;
         setTournaments(data);
         setCurrentUsername(me?.username ?? null);
-        setLocalProfile(loadUserProfile());
         const active = data.find((tournament) => tournament.active) ?? data[0];
         setSelectedTournamentId(active?.id ?? '');
       })
@@ -173,12 +168,6 @@ export function LeaderboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    const handler = () => setLocalProfile(loadUserProfile());
-    window.addEventListener('userProfileUpdated', handler);
-    return () => window.removeEventListener('userProfileUpdated', handler);
   }, []);
 
   useEffect(() => {
@@ -290,11 +279,7 @@ export function LeaderboardPage() {
               </Box>
 
               {/* Avatar */}
-              <ParticipantAvatar
-                player={player}
-                size={38}
-                profile={player.username === currentUsername ? localProfile : undefined}
-              />
+              <ParticipantAvatar player={player} size={38} />
 
               {/* Name + accuracy bar */}
               <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -359,11 +344,7 @@ export function LeaderboardPage() {
                     </TableCell>
                     <TableCell sx={{ maxWidth: 0 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-                        <ParticipantAvatar
-                          player={player}
-                          size={26}
-                          profile={player.username === currentUsername ? localProfile : undefined}
-                        />
+                        <ParticipantAvatar player={player} size={26} />
                         <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {player.name}
                         </Typography>

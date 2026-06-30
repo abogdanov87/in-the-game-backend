@@ -1,3 +1,5 @@
+import { dataUrlToBlob } from './userProfile';
+
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 
@@ -7,6 +9,9 @@ export interface ApiUser {
   email?: string;
   nickname?: string;
   avatar?: string | null;
+  avatar_type?: 'color' | 'emoji' | 'photo' | string;
+  avatar_color?: string | null;
+  avatar_emoji?: string | null;
 }
 
 export interface TournamentSummary {
@@ -116,6 +121,9 @@ export interface Player {
   username?: string;
   email?: string;
   avatar?: string | null;
+  avatarType?: 'color' | 'emoji' | 'photo' | string;
+  avatarColor?: string | null;
+  avatarEmoji?: string | null;
   name: string;
   points: number;
   correctPredictions: number;
@@ -132,12 +140,31 @@ export interface TournamentFavorite {
   team: TeamShort;
 }
 
+export interface MatchForecastHistory {
+  match_id: number;
+  start_date: string;
+  points: number;
+  exact_result: number;
+  goals_difference: number;
+  match_result: number;
+}
+
 export interface ParticipantDetails {
   id: number;
   user: ApiUser;
   tournament?: TournamentSummary;
   winner: TournamentFavorite[];
   score: ParticipantScore;
+  match_forecasts?: MatchForecastHistory[];
+}
+
+export interface TournamentStats {
+  tournament: string;
+  points: number;
+  totalPredictions: number;
+  exactScores: number;
+  correctOutcomes: number;
+  correctDiff: number;
 }
 
 export interface UiMatch {
@@ -228,6 +255,81 @@ export function fetchMe() {
   return request<ApiUser>('/api/v1/me/');
 }
 
+export interface UpdateMePayload {
+  nickname?: string;
+  avatar_type?: 'color' | 'emoji' | 'photo';
+  avatar_color?: string;
+  avatar_emoji?: string;
+  clear_avatar?: boolean;
+  avatarDataUrl?: string;
+}
+
+async function parseApiResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    let message = response.statusText;
+    try {
+      const data = await response.json();
+      message = data.detail || data.message || JSON.stringify(data);
+    } catch {}
+    throw new Error(message || `HTTP ${response.status}`);
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+
+export async function updateMe(payload: UpdateMePayload): Promise<ApiUser> {
+  const token = getAccessToken();
+  const headers = new Headers();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  if (payload.avatarDataUrl) {
+    const form = new FormData();
+    if (payload.nickname !== undefined) form.append('nickname', payload.nickname);
+    if (payload.avatar_type) form.append('avatar_type', payload.avatar_type);
+    if (payload.avatar_color) form.append('avatar_color', payload.avatar_color);
+    if (payload.avatar_emoji !== undefined) form.append('avatar_emoji', payload.avatar_emoji);
+    if (payload.clear_avatar) form.append('clear_avatar', 'true');
+    form.append('avatar', dataUrlToBlob(payload.avatarDataUrl), 'avatar.jpg');
+    const response = await fetch('/api/v1/me/', { method: 'PATCH', headers, body: form });
+    return parseApiResponse<ApiUser>(response);
+  }
+
+  return request<ApiUser>('/api/v1/me/', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      nickname: payload.nickname,
+      avatar_type: payload.avatar_type,
+      avatar_color: payload.avatar_color,
+      avatar_emoji: payload.avatar_emoji,
+      clear_avatar: payload.clear_avatar,
+    }),
+  });
+}
+
+export function apiUserToAvatarSource(user: ApiUser): import('./userProfile').AvatarUserSource {
+  return {
+    nickname: user.nickname,
+    username: user.username,
+    email: user.email,
+    avatar: normalizeMediaUrl(user.avatar),
+    avatar_type: user.avatar_type,
+    avatar_color: user.avatar_color,
+    avatar_emoji: user.avatar_emoji,
+  };
+}
+
+export function apiUserToPlayerFields(user: ApiUser) {
+  return {
+    name: user.nickname || user.username || user.email || 'Игрок',
+    avatar: normalizeMediaUrl(user.avatar),
+    avatarType: user.avatar_type,
+    avatarColor: user.avatar_color,
+    avatarEmoji: user.avatar_emoji,
+  };
+}
+
 export function fetchTournaments() {
   return request<TournamentSummary[]>('/api/v2/tournaments/');
 }
@@ -300,6 +402,72 @@ export function formatRulePoints(points: number) {
   return Number.isInteger(points) ? String(points) : points.toFixed(1);
 }
 
+export function outcomeRulePoints(rules: TournamentRule[] | undefined) {
+  if (!rules?.length) return null;
+  const rulesByType = new Map(rules.filter((rule) => rule.active).map((rule) => [rule.rule_type, rule.points]));
+  return {
+    exact: rulesByType.get('exact result') ?? 0,
+    outcome: rulesByType.get('match result') ?? 0,
+    diff: rulesByType.get('goals difference') ?? 0,
+  };
+}
+
+export function scoreToTournamentStats(title: string, score: ParticipantScore): TournamentStats {
+  return {
+    tournament: title,
+    points: score.points,
+    totalPredictions: score.forecasts_count,
+    exactScores: score.exact_result,
+    correctOutcomes: score.match_result,
+    correctDiff: score.goals_difference,
+  };
+}
+
+export function aggregateTournamentStats(entries: TournamentStats[]): TournamentStats {
+  return entries.reduce(
+    (acc, entry) => ({
+      tournament: 'Все турниры',
+      points: acc.points + entry.points,
+      totalPredictions: acc.totalPredictions + entry.totalPredictions,
+      exactScores: acc.exactScores + entry.exactScores,
+      correctOutcomes: acc.correctOutcomes + entry.correctOutcomes,
+      correctDiff: acc.correctDiff + entry.correctDiff,
+    }),
+    { tournament: 'Все турниры', points: 0, totalPredictions: 0, exactScores: 0, correctOutcomes: 0, correctDiff: 0 },
+  );
+}
+
+export interface MatchBlockStats {
+  label: string;
+  points: number;
+  accuracy: number;
+}
+
+export function aggregateMatchBlocks(forecasts: MatchForecastHistory[], blockSize = 10): MatchBlockStats[] {
+  if (!forecasts.length) return [];
+
+  const sorted = [...forecasts].sort(
+    (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime(),
+  );
+
+  const blocks: MatchBlockStats[] = [];
+  for (let i = 0; i < sorted.length; i += blockSize) {
+    const chunk = sorted.slice(i, i + blockSize);
+    const points = chunk.reduce((sum, item) => sum + item.points, 0);
+    const correct = chunk.filter(
+      (item) => item.exact_result + item.goals_difference + item.match_result > 0,
+    ).length;
+    const from = i + 1;
+    const to = i + chunk.length;
+    blocks.push({
+      label: `${from}–${to}`,
+      points: Math.round(points * 10) / 10,
+      accuracy: chunk.length ? Math.round((correct / chunk.length) * 100) : 0,
+    });
+  }
+  return blocks;
+}
+
 export function scoringLegendFromRules(rules: TournamentRule[] | undefined) {
   if (!rules?.length) return [];
 
@@ -364,6 +532,9 @@ export function participantToPlayer(participant: TournamentParticipant, tourname
     username: participant.user.username,
     email: participant.user.email,
     avatar: normalizeMediaUrl(participant.user.avatar),
+    avatarType: participant.user.avatar_type,
+    avatarColor: participant.user.avatar_color,
+    avatarEmoji: participant.user.avatar_emoji,
     name,
     points: score.points,
     correctPredictions: correct,

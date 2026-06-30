@@ -20,11 +20,35 @@ class User(AbstractUser):
         blank=False, null=False,
         unique=True,
     )
+    AVATAR_TYPE_CHOICES = (
+        ('color', _('Цвет')),
+        ('emoji', _('Эмодзи')),
+        ('photo', _('Фото')),
+    )
     avatar = ThumbnailerImageField(
         _('Аватарка'),
         upload_to ='avatars/',
         blank=True, null=True,
         resize_source=dict(size=(128, 128), sharpen=True),
+    )
+    avatar_type = models.CharField(
+        _('Тип аватара'),
+        max_length=10,
+        choices=AVATAR_TYPE_CHOICES,
+        default='color',
+        blank=True,
+    )
+    avatar_color = models.CharField(
+        _('Цвет аватара'),
+        max_length=9,
+        blank=True,
+        default='#c4f135',
+    )
+    avatar_emoji = models.CharField(
+        _('Эмодзи аватара'),
+        max_length=16,
+        blank=True,
+        default='',
     )
     password_change_date = models.DateTimeField(
         _('Дата изменения пароля'),
