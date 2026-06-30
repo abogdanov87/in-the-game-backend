@@ -2,6 +2,7 @@ from rest_framework import generics, permissions, status
 from rest_framework_bulk import ListBulkCreateUpdateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 import glob, os
 from django.conf import settings
 import copy
@@ -76,10 +77,22 @@ class ParamListCreateAPIView(ListBulkCreateUpdateAPIView):
 
 class MeAPIView(APIView):
     queryset = User.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request, format=None):
         me = request.user
         serializer = UserSerializer(me)
+        return Response(serializer.data)
+
+    def patch(self, request, format=None):
+        me = request.user
+        data = request.data.copy()
+        if data.get('clear_avatar') in ('true', 'True', '1', True):
+            data['clear_avatar'] = True
+        serializer = UserSerializer(me, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)
 
 

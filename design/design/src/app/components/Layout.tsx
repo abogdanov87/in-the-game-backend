@@ -28,8 +28,8 @@ import {
   Close as CloseIcon,
   AccountCircle as ProfileIcon,
 } from '@mui/icons-material';
-import { loadUserProfile, resolveAvatarProfile, type UserProfile } from '../utils/userProfile';
-import { clearTokens } from '../utils/api';
+import { loadUserProfile, resolveAvatarProfile, mergeUserIntoProfile, saveUserProfile, avatarSourceFromProfile, type UserProfile } from '../utils/userProfile';
+import { clearTokens, fetchMe } from '../utils/api';
 import { UserAvatarDisplay } from './PlayerStatsView';
 
 const drawerWidth = 260;
@@ -48,7 +48,7 @@ const pageTitles: Record<string, string> = {
 };
 
 function UserAvatar({ profile, size = 32 }: { profile: UserProfile; size?: number }) {
-  const resolved = resolveAvatarProfile({ name: profile.nickname, avatar: null }, profile);
+  const resolved = resolveAvatarProfile(avatarSourceFromProfile(profile));
   return <UserAvatarDisplay profile={resolved} size={size} />;
 }
 
@@ -60,8 +60,16 @@ export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Re-read profile from localStorage whenever it's updated
+  // Sync profile from server and refresh after local edits
   useEffect(() => {
+    fetchMe()
+      .then((me) => {
+        const merged = mergeUserIntoProfile(me);
+        setProfile(merged);
+        saveUserProfile(merged);
+      })
+      .catch(() => {});
+
     const handler = () => setProfile(loadUserProfile());
     window.addEventListener('userProfileUpdated', handler);
     return () => window.removeEventListener('userProfileUpdated', handler);

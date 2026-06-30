@@ -556,6 +556,7 @@ class ParticipantStatSerializer(serializers.ModelSerializer):
     tournament = TournamentShortSerializer()
     score = serializers.SerializerMethodField()
     winner = serializers.SerializerMethodField()
+    match_forecasts = serializers.SerializerMethodField()
 
     class Meta:
         model = Participant
@@ -567,6 +568,7 @@ class ParticipantStatSerializer(serializers.ModelSerializer):
             'active',
             'winner',
             'score',
+            'match_forecasts',
         )
 
     def get_winner(self, obj):
@@ -598,6 +600,48 @@ class ParticipantStatSerializer(serializers.ModelSerializer):
         )
 
         return get_calc_score(qs, obj)
+
+    def get_match_forecasts(self, obj):
+        matches = Match.objects.filter(
+            match_forecast__tournament=obj.tournament.id,
+            match_forecast__forecast_type='full time',
+            match_forecast__user=obj.user,
+            base_tournament=obj.tournament.base_tournament,
+            status='finished',
+            match_result__result_type='full time',
+        ).order_by('start_date').distinct()
+
+        result = []
+        for match in matches:
+            qs = Match.objects.filter(
+                id=match.id,
+                match_forecast__tournament=obj.tournament.id,
+                match_forecast__forecast_type='full time',
+                base_tournament=obj.tournament.base_tournament,
+                match_forecast__user=obj.user,
+                status='finished',
+                match_result__result_type='full time',
+            ).values(
+                'match_forecast__tournament',
+                'match_forecast__user',
+                'team_home',
+                'team_away',
+                'match_forecast__score_home',
+                'match_forecast__score_away',
+                'match_result__score_home',
+                'match_result__score_away',
+                'stage',
+            )
+            score = get_calc_score(qs, obj)
+            result.append({
+                'match_id': match.id,
+                'start_date': match.start_date,
+                'points': round(score['points'] - score['tournament_bonuses'], 1),
+                'exact_result': score['exact_result'],
+                'goals_difference': score['goals_difference'],
+                'match_result': score['match_result'],
+            })
+        return result
 
     def validate(self, data):
         return data

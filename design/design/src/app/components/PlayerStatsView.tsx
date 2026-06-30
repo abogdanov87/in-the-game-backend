@@ -19,11 +19,12 @@ import {
   BarChart, Bar, Cell,
 } from 'recharts';
 import {
-  playerTournamentStats, type TournamentStats,
-} from '../utils/mockData';
-import type { Player, TournamentFavorite } from '../utils/api';
-import { fetchParticipant, normalizeMediaUrl } from '../utils/api';
-import { type UserProfile, type AvatarType, saveUserProfile, resizeImage, resolveAvatarProfile, type AvatarDisplayProfile } from '../utils/userProfile';
+  type Player, type TournamentFavorite, type TournamentRule, type MatchForecastHistory,
+  fetchParticipant, fetchTournaments, fetchTournamentTable, normalizeMediaUrl, updateMe,
+  apiUserToPlayerFields, scoreToTournamentStats, aggregateTournamentStats, outcomeRulePoints,
+  aggregateMatchBlocks, type TournamentStats,
+} from '../utils/api';
+import { type UserProfile, type AvatarType, saveUserProfile, resizeImage, resolveAvatarProfile, mergeUserIntoProfile, type AvatarDisplayProfile } from '../utils/userProfile';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const AVATAR_COLORS = [
@@ -67,38 +68,40 @@ export function UserAvatarDisplay({ profile, size = 40 }: {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function deriveStats(player: Player, selected: string | null): TournamentStats {
-  if (!selected) {
-    return {
-      tournament: 'Все турниры',
-      points: player.points,
-      totalPredictions: player.totalPredictions,
-      exactScores: player.exactScores,
-      correctOutcomes: player.correctOutcomes,
-      correctDiff: player.correctDiff,
-    };
+interface TournamentEntry {
+  tournamentId: number;
+  title: string;
+  participantId: number;
+  stats: TournamentStats;
+  rules: TournamentRule[];
+  matchForecasts: MatchForecastHistory[];
+  favorites: TournamentFavorite[];
+}
+
+function deriveStats(entries: TournamentEntry[], selectedTournamentId: number | null): TournamentStats {
+  if (!entries.length) {
+    return { tournament: 'Все турниры', points: 0, totalPredictions: 0, exactScores: 0, correctOutcomes: 0, correctDiff: 0 };
   }
-  const found = (playerTournamentStats[player.id] ?? []).find(t => t.tournament === selected);
-  return found ?? { tournament: selected, points: 0, totalPredictions: 0, exactScores: 0, correctOutcomes: 0, correctDiff: 0 };
+  if (!selectedTournamentId) {
+    return aggregateTournamentStats(entries.map((entry) => entry.stats));
+  }
+  return entries.find((entry) => entry.tournamentId === selectedTournamentId)?.stats
+    ?? { tournament: '', points: 0, totalPredictions: 0, exactScores: 0, correctOutcomes: 0, correctDiff: 0 };
 }
 
-function getWeeklyData(points: number, accuracyTarget: number) {
-  const curve = [0.07, 0.17, 0.29, 0.42, 0.56, 0.70, 0.85, 1.0];
-  return curve.map((pct, i) => ({
-    week: `Нед ${i + 1}`,
-    points: Math.round(points * pct),
-    accuracy: Math.round(accuracyTarget * (0.68 + pct * 0.32)),
-  }));
-}
-
-function getCategories(stats: TournamentStats) {
+function getCategories(stats: TournamentStats, rulePoints: ReturnType<typeof outcomeRulePoints>) {
   const wrong = Math.max(0, stats.totalPredictions - stats.exactScores - stats.correctOutcomes - stats.correctDiff);
+  const showPoints = rulePoints !== null;
   return [
-    { name: 'Точный счёт', count: stats.exactScores,     color: '#c4f135', points: 5 },
-    { name: 'Исход',       count: stats.correctOutcomes, color: '#38bdf8', points: 3 },
-    { name: 'Разница',     count: stats.correctDiff,     color: '#f59e0b', points: 2 },
-    { name: 'Неверно',     count: wrong,                  color: '#5a6a8a', points: 0 },
+    { name: 'Точный счёт', count: stats.exactScores, color: '#c4f135', points: showPoints ? rulePoints.exact : null },
+    { name: 'Исход', count: stats.correctOutcomes, color: '#38bdf8', points: showPoints ? rulePoints.outcome : null },
+    { name: 'Разница', count: stats.correctDiff, color: '#f59e0b', points: showPoints ? rulePoints.diff : null },
+    { name: 'Неверно', count: wrong, color: '#5a6a8a', points: null },
   ];
+}
+
+function shortTournamentTitle(title: string) {
+  return title.replace('Российская ', '').replace('ая ', '. ');
 }
 
 // ─── Chart tooltip ────────────────────────────────────────────────────────────
@@ -191,12 +194,13 @@ function FavoritesReadOnly({ favorites, loading }: { favorites: TournamentFavori
 
 interface AvatarEditorProps {
   open: boolean;
+  saving?: boolean;
   initial: Pick<UserProfile, 'nickname' | 'avatarType' | 'avatarColor' | 'avatarEmoji' | 'avatarPhoto'>;
   onSave: (data: Pick<UserProfile, 'nickname' | 'avatarType' | 'avatarColor' | 'avatarEmoji' | 'avatarPhoto'>) => void;
   onClose: () => void;
 }
 
-function AvatarEditorDialog({ open, initial, onSave, onClose }: AvatarEditorProps) {
+function AvatarEditorDialog({ open, saving = false, initial, onSave, onClose }: AvatarEditorProps) {
   const [nickname, setNickname] = useState(initial.nickname);
   const [tab, setTab] = useState<AvatarType>(initial.avatarType);
   const [color, setColor] = useState(initial.avatarColor);
@@ -292,8 +296,10 @@ function AvatarEditorDialog({ open, initial, onSave, onClose }: AvatarEditorProp
         )}
       </DialogContent>
       <DialogActions sx={{ p: 2, pt: 1, gap: 1 }}>
-        <Button onClick={onClose} variant="outlined" sx={{ borderColor: 'rgba(26,34,64,0.8)', color: 'text.secondary' }}>Отмена</Button>
-        <Button onClick={() => onSave({ nickname: nickname.trim() || initial.nickname, avatarType: tab, avatarColor: color, avatarEmoji: emoji, avatarPhoto: photo })} variant="contained" disabled={!nickname.trim() || photoLoading}>Сохранить</Button>
+        <Button onClick={onClose} variant="outlined" sx={{ borderColor: 'rgba(26,34,64,0.8)', color: 'text.secondary' }} disabled={saving}>Отмена</Button>
+        <Button onClick={() => onSave({ nickname: nickname.trim() || initial.nickname, avatarType: tab, avatarColor: color, avatarEmoji: emoji, avatarPhoto: photo })} variant="contained" disabled={!nickname.trim() || photoLoading || saving}>
+          {saving ? 'Сохранение...' : 'Сохранить'}
+        </Button>
       </DialogActions>
     </Dialog>
   );
@@ -306,65 +312,178 @@ interface PlayerStatsViewProps {
   rank: number;
   profile?: UserProfile;
   onProfileChange?: (updated: UserProfile) => void;
+  onPlayerChange?: (updates: Partial<Player>) => void;
 }
 
-export function PlayerStatsView({ player, rank, profile, onProfileChange }: PlayerStatsViewProps) {
+export function PlayerStatsView({ player, rank, profile, onProfileChange, onPlayerChange }: PlayerStatsViewProps) {
   const isOwnProfile = !!profile && !!onProfileChange;
   const [activeBar, setActiveBar] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [selectedTournament, setSelectedTournament] = useState<string | null>(null);
+  const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(null);
+  const [tournamentEntries, setTournamentEntries] = useState<TournamentEntry[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [tournamentFavorites, setTournamentFavorites] = useState<TournamentFavorite[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(true);
   const [participantAvatar, setParticipantAvatar] = useState<string | null>(player.avatar ?? null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const nickname = profile?.nickname ?? player.name;
 
   const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
   const medalColor  = rank <= 3 ? medalColors[rank - 1] : undefined;
 
-  // Tournament data
-  const tournamentList = (playerTournamentStats[player.id] ?? []).map(t => t.tournament);
-  const stats = deriveStats(player, selectedTournament);
+  const selectedEntry = selectedTournamentId
+    ? tournamentEntries.find((entry) => entry.tournamentId === selectedTournamentId)
+    : null;
+  const stats = deriveStats(tournamentEntries, selectedTournamentId);
+  const rulePoints = selectedTournamentId ? outcomeRulePoints(selectedEntry?.rules) : null;
   const correctPredictions = stats.exactScores + stats.correctOutcomes + stats.correctDiff;
   const accuracy = stats.totalPredictions > 0 ? (correctPredictions / stats.totalPredictions) * 100 : 0;
   const avgPoints = stats.totalPredictions > 0 ? (stats.points / stats.totalPredictions).toFixed(1) : '0';
-  const weeklyData  = getWeeklyData(stats.points, accuracy);
-  const categories  = getCategories(stats);
+  const matchForecasts = selectedTournamentId
+    ? (selectedEntry?.matchForecasts ?? [])
+    : tournamentEntries.flatMap((entry) => entry.matchForecasts);
+  const matchBlockData = aggregateMatchBlocks(matchForecasts);
+  const categories = getCategories(stats, rulePoints);
+  const selectedTournamentTitle = selectedEntry?.title ?? null;
+  const avgPointsPct = Math.min(100, parseFloat(avgPoints) * 20);
 
-  const avatarProfile = resolveAvatarProfile(
-    { name: player.name, avatar: participantAvatar ?? player.avatar },
-    isOwnProfile ? profile : undefined,
-  );
+  const avatarProfile = resolveAvatarProfile({
+    nickname: profile?.nickname ?? player.name,
+    username: player.username,
+    email: player.email,
+    avatar: participantAvatar ?? player.avatar,
+    avatar_type: player.avatarType,
+    avatar_color: player.avatarColor,
+    avatar_emoji: player.avatarEmoji,
+  });
 
   useEffect(() => {
     let cancelled = false;
+    setStatsLoading(true);
     setFavoritesLoading(true);
-    fetchParticipant(player.id)
-      .then((data) => {
-        if (!cancelled) {
-          setTournamentFavorites(data.winner ?? []);
-          if (data.user?.avatar) {
-            setParticipantAvatar(normalizeMediaUrl(data.user.avatar));
+
+    async function loadTournamentStats() {
+      try {
+        const tournaments = await fetchTournaments();
+        const userId = player.userId;
+        if (!userId) {
+          const fallback = await fetchParticipant(player.id);
+          if (!cancelled) {
+            setTournamentEntries([{
+              tournamentId: fallback.tournament?.id ?? 0,
+              title: fallback.tournament?.title ?? player.tournamentTitle ?? 'Турнир',
+              participantId: player.id,
+              stats: scoreToTournamentStats(fallback.tournament?.title ?? 'Турнир', fallback.score),
+              rules: [],
+              matchForecasts: fallback.match_forecasts ?? [],
+              favorites: fallback.winner ?? [],
+            }]);
+            setTournamentFavorites(fallback.winner ?? []);
+            if (fallback.user?.avatar) {
+              setParticipantAvatar(normalizeMediaUrl(fallback.user.avatar));
+            }
           }
+          return;
         }
-      })
-      .catch(() => {
-        if (!cancelled) setTournamentFavorites([]);
-      })
-      .finally(() => {
-        if (!cancelled) setFavoritesLoading(false);
-      });
+
+        const entries = (await Promise.all(
+          tournaments.map(async (tournament) => {
+            const table = await fetchTournamentTable(tournament.id);
+            const participant = table.tournament_participant.find((item) => item.user.id === userId);
+            if (!participant) return null;
+
+            const details = await fetchParticipant(participant.id);
+            return {
+              tournamentId: tournament.id,
+              title: table.title,
+              participantId: participant.id,
+              stats: scoreToTournamentStats(table.title, participant.score),
+              rules: table.tournament_rules ?? [],
+              matchForecasts: details.match_forecasts ?? [],
+              favorites: details.winner ?? [],
+              avatar: details.user?.avatar ?? null,
+            } satisfies TournamentEntry & { avatar: string | null };
+          }),
+        )).filter((entry): entry is TournamentEntry & { avatar: string | null } => entry !== null);
+
+        if (cancelled) return;
+
+        setTournamentEntries(entries.map(({ avatar: _avatar, ...entry }) => entry));
+        const currentEntry = entries.find((entry) => entry.participantId === player.id) ?? entries[0];
+        setTournamentFavorites(currentEntry?.favorites ?? []);
+        const avatar = (entries.find((entry) => entry.participantId === player.id) ?? entries[0])?.avatar;
+        if (avatar) {
+          setParticipantAvatar(normalizeMediaUrl(avatar));
+        }
+      } catch {
+        if (!cancelled) {
+          setTournamentEntries([]);
+          setTournamentFavorites([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setStatsLoading(false);
+          setFavoritesLoading(false);
+        }
+      }
+    }
+
+    loadTournamentStats();
     return () => {
       cancelled = true;
     };
-  }, [player.id]);
+  }, [player.id, player.userId, player.tournamentTitle]);
 
-  const handleSaveAvatar = (data: Pick<UserProfile, 'nickname' | 'avatarType' | 'avatarColor' | 'avatarEmoji' | 'avatarPhoto'>) => {
+  useEffect(() => {
+    if (selectedTournamentId) {
+      const entry = tournamentEntries.find((item) => item.tournamentId === selectedTournamentId);
+      setTournamentFavorites(entry?.favorites ?? []);
+      setFavoritesLoading(false);
+    } else {
+      const currentEntry = tournamentEntries.find((entry) => entry.participantId === player.id) ?? tournamentEntries[0];
+      setTournamentFavorites(currentEntry?.favorites ?? []);
+    }
+  }, [selectedTournamentId, tournamentEntries, player.id]);
+
+  const handleSaveAvatar = async (data: Pick<UserProfile, 'nickname' | 'avatarType' | 'avatarColor' | 'avatarEmoji' | 'avatarPhoto'>) => {
     if (!profile || !onProfileChange) return;
-    const updated = { ...profile, ...data };
-    onProfileChange(updated);
-    saveUserProfile(updated);
-    setEditOpen(false);
+    setSavingProfile(true);
+    setSaveError('');
+    try {
+      const payload = {
+        nickname: data.nickname.trim() || profile.nickname,
+        avatar_type: data.avatarType,
+        avatar_color: data.avatarColor,
+        avatar_emoji: data.avatarEmoji,
+        clear_avatar: false as boolean,
+        avatarDataUrl: undefined as string | undefined,
+      };
+
+      if (data.avatarType === 'photo') {
+        if (data.avatarPhoto.startsWith('data:')) {
+          payload.avatarDataUrl = data.avatarPhoto;
+        } else if (!data.avatarPhoto) {
+          payload.avatar_type = 'color';
+          payload.clear_avatar = true;
+        }
+      } else {
+        payload.clear_avatar = true;
+      }
+
+      const saved = await updateMe(payload);
+      const updated = mergeUserIntoProfile(saved);
+      onProfileChange(updated);
+      saveUserProfile(updated);
+      onPlayerChange?.(apiUserToPlayerFields(saved));
+      setParticipantAvatar(normalizeMediaUrl(saved.avatar));
+      setEditOpen(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Не удалось сохранить профиль');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   return (
@@ -399,39 +518,39 @@ export function PlayerStatsView({ player, rank, profile, onProfileChange }: Play
       </Box>
 
       {/* ── Tournament selector ───────────────────────────────────────── */}
-      {tournamentList.length > 0 && (
+      {tournamentEntries.length > 0 && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>
           <TournamentIcon sx={{ fontSize: '0.9rem', color: 'text.secondary', flexShrink: 0 }} />
           <Chip
             label="Все турниры"
             size="small"
-            onClick={() => setSelectedTournament(null)}
+            onClick={() => setSelectedTournamentId(null)}
             sx={{
               cursor: 'pointer',
-              bgcolor: selectedTournament === null ? 'rgba(196,241,53,0.12)' : '#141928',
-              color: selectedTournament === null ? 'primary.main' : 'text.secondary',
-              border: selectedTournament === null ? '1px solid rgba(196,241,53,0.35)' : '1px solid rgba(26,34,64,0.8)',
+              bgcolor: selectedTournamentId === null ? 'rgba(196,241,53,0.12)' : '#141928',
+              color: selectedTournamentId === null ? 'primary.main' : 'text.secondary',
+              border: selectedTournamentId === null ? '1px solid rgba(196,241,53,0.35)' : '1px solid rgba(26,34,64,0.8)',
               fontWeight: 600,
-              '&:hover': { bgcolor: selectedTournament === null ? 'rgba(196,241,53,0.18)' : 'rgba(255,255,255,0.05)' },
+              '&:hover': { bgcolor: selectedTournamentId === null ? 'rgba(196,241,53,0.18)' : 'rgba(255,255,255,0.05)' },
             }}
           />
-          {tournamentList.map(t => (
+          {tournamentEntries.map((entry) => (
             <Chip
-              key={t}
-              label={t.replace('Российская ', '').replace('ая ', '. ')}
+              key={entry.tournamentId}
+              label={shortTournamentTitle(entry.title)}
               size="small"
-              onClick={() => setSelectedTournament(t)}
+              onClick={() => setSelectedTournamentId(entry.tournamentId)}
               sx={{
                 cursor: 'pointer',
-                bgcolor: selectedTournament === t ? 'rgba(196,241,53,0.12)' : '#141928',
-                color: selectedTournament === t ? 'primary.main' : 'text.secondary',
-                border: selectedTournament === t ? '1px solid rgba(196,241,53,0.35)' : '1px solid rgba(26,34,64,0.8)',
+                bgcolor: selectedTournamentId === entry.tournamentId ? 'rgba(196,241,53,0.12)' : '#141928',
+                color: selectedTournamentId === entry.tournamentId ? 'primary.main' : 'text.secondary',
+                border: selectedTournamentId === entry.tournamentId ? '1px solid rgba(196,241,53,0.35)' : '1px solid rgba(26,34,64,0.8)',
                 fontWeight: 600,
-                '&:hover': { bgcolor: selectedTournament === t ? 'rgba(196,241,53,0.18)' : 'rgba(255,255,255,0.05)' },
+                '&:hover': { bgcolor: selectedTournamentId === entry.tournamentId ? 'rgba(196,241,53,0.18)' : 'rgba(255,255,255,0.05)' },
               }}
             />
           ))}
-          {selectedTournament && (
+          {selectedTournamentId && (
             <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', ml: 0.5 }}>
               · {stats.totalPredictions} прогнозов
             </Typography>
@@ -445,7 +564,7 @@ export function PlayerStatsView({ player, rank, profile, onProfileChange }: Play
           { title: 'Точных счётов',  value: stats.exactScores,          subtitle: `из ${stats.totalPredictions} матчей`, icon: <AccuracyIcon />,   accent: '#c4f135', bg: 'rgba(196,241,53,0.06)' },
           { title: 'Точность',       value: `${accuracy.toFixed(0)}%`,  subtitle: 'прогнозов верных',                  icon: <TrendingUpIcon />, accent: '#38bdf8', bg: 'rgba(56,189,248,0.06)' },
           { title: 'Ср. очков/матч', value: avgPoints,                  subtitle: 'средний результат',                 icon: <StarsIcon />,      accent: '#f59e0b', bg: 'rgba(245,158,11,0.06)' },
-          { title: 'Очков',          value: stats.points,               subtitle: selectedTournament ?? 'Все турниры', icon: <TimelineIcon />,   accent: '#a855f7', bg: 'rgba(168,85,247,0.06)' },
+          { title: 'Очков',          value: stats.points,               subtitle: selectedTournamentTitle ? shortTournamentTitle(selectedTournamentTitle) : 'Все турниры', icon: <TimelineIcon />,   accent: '#a855f7', bg: 'rgba(168,85,247,0.06)' },
         ].map(s => (
           <Grid size={{ xs: 6, md: 3 }} key={s.title}>
             <StatCard title={s.title} value={s.value} subtitle={s.subtitle} icon={s.icon} accentColor={s.accent} bgColor={s.bg} />
@@ -458,30 +577,40 @@ export function PlayerStatsView({ player, rank, profile, onProfileChange }: Play
         <Grid size={{ xs: 12, lg: 7 }}>
           <Box sx={{ p: 2.5, borderRadius: 1.5, bgcolor: '#0d1120', border: '1px solid rgba(26,34,64,0.8)' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.04em' }}>ПРОГРЕСС ПО НЕДЕЛЯМ</Typography>
-              <Chip label={selectedTournament?.replace('Российская ', '') ?? 'Все турниры'} size="small" sx={{ fontSize: '0.65rem', height: 20 }} />
+              <Typography variant="h6" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.04em' }}>ПРОГРЕСС ПО 10 МАТЧЕЙ</Typography>
+              <Chip label={selectedTournamentTitle ? shortTournamentTitle(selectedTournamentTitle) : 'Все турниры'} size="small" sx={{ fontSize: '0.65rem', height: 20 }} />
             </Box>
+            {statsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : matchBlockData.length === 0 ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Недостаточно данных для графика</Typography>
+              </Box>
+            ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={weeklyData} margin={{ top: 5, right: 5, bottom: 0, left: -24 }}>
+              <AreaChart data={matchBlockData} margin={{ top: 5, right: 5, bottom: 0, left: -24 }}>
                 <defs>
-                  <linearGradient id={`gP${player.id}${selectedTournament ?? ''}`} x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id={`gP${player.id}${selectedTournamentId ?? ''}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#c4f135" stopOpacity={0.2} />
                     <stop offset="95%" stopColor="#c4f135" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id={`gA${player.id}${selectedTournament ?? ''}`} x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id={`gA${player.id}${selectedTournamentId ?? ''}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.15} />
                     <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,34,64,0.8)" vertical={false} />
-                <XAxis dataKey="week" tick={{ fill: '#5a6a8a', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={{ fill: '#5a6a8a', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="l" tick={{ fill: '#5a6a8a', fontSize: 10, fontFamily: '"JetBrains Mono", monospace' }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="r" orientation="right" tick={{ fill: '#5a6a8a', fontSize: 10, fontFamily: '"JetBrains Mono", monospace' }} axisLine={false} tickLine={false} domain={[40, 85]} />
+                <YAxis yAxisId="r" orientation="right" tick={{ fill: '#5a6a8a', fontSize: 10, fontFamily: '"JetBrains Mono", monospace' }} axisLine={false} tickLine={false} domain={[0, 100]} />
                 <RechartsTooltip content={<ChartTooltip />} />
-                <Area yAxisId="l" type="monotone" dataKey="points"   stroke="#c4f135" strokeWidth={2} fill={`url(#gP${player.id}${selectedTournament ?? ''})`} dot={{ fill: '#c4f135', r: 3, strokeWidth: 0 }} name="Очки" />
-                <Area yAxisId="r" type="monotone" dataKey="accuracy" stroke="#38bdf8" strokeWidth={2} fill={`url(#gA${player.id}${selectedTournament ?? ''})`} dot={{ fill: '#38bdf8', r: 3, strokeWidth: 0 }} name="Точность" />
+                <Area yAxisId="l" type="monotone" dataKey="points"   stroke="#c4f135" strokeWidth={2} fill={`url(#gP${player.id}${selectedTournamentId ?? ''})`} dot={{ fill: '#c4f135', r: 3, strokeWidth: 0 }} name="Очки" />
+                <Area yAxisId="r" type="monotone" dataKey="accuracy" stroke="#38bdf8" strokeWidth={2} fill={`url(#gA${player.id}${selectedTournamentId ?? ''})`} dot={{ fill: '#38bdf8', r: 3, strokeWidth: 0 }} name="Точность" />
               </AreaChart>
             </ResponsiveContainer>
+            )}
           </Box>
         </Grid>
 
@@ -508,7 +637,7 @@ export function PlayerStatsView({ player, rank, profile, onProfileChange }: Play
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                     <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, fontSize: '0.78rem', color: cat.color }}>{cat.count}</Typography>
-                    {cat.points > 0 && <Chip label={`+${cat.points}очк`} size="small" sx={{ height: 15, fontSize: '0.55rem', bgcolor: `${cat.color}15`, color: cat.color, border: `1px solid ${cat.color}30` }} />}
+                    {cat.points != null && cat.points > 0 && <Chip label={`+${cat.points}очк`} size="small" sx={{ height: 15, fontSize: '0.55rem', bgcolor: `${cat.color}15`, color: cat.color, border: `1px solid ${cat.color}30` }} />}
                   </Box>
                 </Box>
               ))}
@@ -522,7 +651,7 @@ export function PlayerStatsView({ player, rank, profile, onProfileChange }: Play
         <Typography variant="h6" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.04em', mb: 2 }}>ДЕТАЛЬНАЯ СТАТИСТИКА</Typography>
         <Grid container spacing={2}>
           {[
-            { label: 'Средние очки за матч', value: `${avgPoints}/5`,                                                                                    pct: (parseFloat(avgPoints) / 5) * 100,                             color: '#c4f135' },
+            { label: 'Средние очки за матч', value: avgPoints, pct: avgPointsPct, color: '#c4f135' },
             { label: 'Точные счёты',         value: stats.totalPredictions ? `${((stats.exactScores / stats.totalPredictions) * 100).toFixed(0)}%` : '—', pct: stats.totalPredictions ? (stats.exactScores / stats.totalPredictions) * 100 : 0,     color: '#22c55e' },
             { label: 'Правильный исход',     value: stats.totalPredictions ? `${((stats.correctOutcomes / stats.totalPredictions) * 100).toFixed(0)}%` : '—', pct: stats.totalPredictions ? (stats.correctOutcomes / stats.totalPredictions) * 100 : 0, color: '#f59e0b' },
             { label: 'Правильная разница',   value: stats.totalPredictions ? `${((stats.correctDiff / stats.totalPredictions) * 100).toFixed(0)}%` : '—',    pct: stats.totalPredictions ? (stats.correctDiff / stats.totalPredictions) * 100 : 0,    color: '#38bdf8' },
@@ -551,7 +680,20 @@ export function PlayerStatsView({ player, rank, profile, onProfileChange }: Play
 
       {/* ── Dialogs ─────────────────────────────────────────────────── */}
       {isOwnProfile && (
-        <AvatarEditorDialog open={editOpen} initial={{ nickname, avatarType: avatarProfile.avatarType, avatarColor: avatarProfile.avatarColor, avatarEmoji: avatarProfile.avatarEmoji, avatarPhoto: avatarProfile.avatarPhoto }} onSave={handleSaveAvatar} onClose={() => setEditOpen(false)} />
+        <>
+          {saveError && (
+            <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mb: 1.5 }}>
+              {saveError}
+            </Typography>
+          )}
+          <AvatarEditorDialog
+            open={editOpen}
+            saving={savingProfile}
+            initial={{ nickname, avatarType: avatarProfile.avatarType, avatarColor: avatarProfile.avatarColor, avatarEmoji: avatarProfile.avatarEmoji, avatarPhoto: avatarProfile.avatarPhoto }}
+            onSave={handleSaveAvatar}
+            onClose={() => { if (!savingProfile) setEditOpen(false); }}
+          />
+        </>
       )}
     </Box>
   );
