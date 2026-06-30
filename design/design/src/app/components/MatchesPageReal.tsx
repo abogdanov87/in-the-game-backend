@@ -75,13 +75,136 @@ function TabPanel({ children, value, index }: { children: ReactNode; value: numb
   return <div role="tabpanel" hidden={value !== index}>{value === index && <Box sx={{ pt: 2 }}>{children}</Box>}</div>;
 }
 
-function formatDate(dateString: string) {
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(dateString));
+function formatMatchDateParts(dateString: string) {
+  const date = new Date(dateString);
+  return {
+    date: new Intl.DateTimeFormat('ru-RU', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'long',
+    }).format(date),
+    time: new Intl.DateTimeFormat('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date),
+  };
+}
+
+function getMatchMetaBlockColors(isCompleted: boolean, accent: 'lime' | 'blue') {
+  if (isCompleted) {
+    return {
+      bgcolor: 'rgba(90,106,138,0.1)',
+      border: '1px solid rgba(90,106,138,0.28)',
+      primary: 'text.secondary',
+    };
+  }
+  if (accent === 'lime') {
+    return {
+      bgcolor: 'rgba(196,241,53,0.1)',
+      border: '1px solid rgba(196,241,53,0.35)',
+      primary: '#c4f135',
+    };
+  }
+  return {
+    bgcolor: 'rgba(56,189,248,0.1)',
+    border: '1px solid rgba(56,189,248,0.35)',
+    primary: '#38bdf8',
+  };
+}
+
+const matchMetaBlockSx = {
+  flexShrink: 0,
+  px: 1,
+  py: 0.65,
+  borderRadius: 1,
+};
+
+function MatchStartTime({ dateString, isCompleted }: { dateString: string; isCompleted: boolean }) {
+  const { date, time } = formatMatchDateParts(dateString);
+  const colors = getMatchMetaBlockColors(isCompleted, 'blue');
+
+  return (
+    <Box
+      sx={{
+        ...matchMetaBlockSx,
+        textAlign: 'right',
+        bgcolor: colors.bgcolor,
+        border: colors.border,
+      }}
+    >
+      <Typography
+        sx={{
+          fontFamily: '"JetBrains Mono", monospace',
+          fontWeight: 600,
+          fontSize: '0.72rem',
+          color: colors.primary,
+          lineHeight: 1.2,
+          letterSpacing: '0.03em',
+        }}
+      >
+        {time}
+      </Typography>
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+          fontSize: '0.72rem',
+          display: 'block',
+          mt: 0.25,
+          textTransform: 'capitalize',
+          lineHeight: 1.2,
+          maxWidth: 132,
+        }}
+      >
+        {date}
+      </Typography>
+    </Box>
+  );
+}
+
+function MatchTournamentInfo({ match, isCompleted }: { match: UiMatch; isCompleted: boolean }) {
+  const colors = getMatchMetaBlockColors(isCompleted, 'lime');
+  const primaryLabel = isCompleted ? 'Завершён' : match.tournament;
+
+  return (
+    <Box
+      sx={{
+        ...matchMetaBlockSx,
+        textAlign: 'left',
+        bgcolor: colors.bgcolor,
+        border: colors.border,
+        minWidth: 0,
+        maxWidth: '58%',
+      }}
+    >
+      <Typography
+        sx={{
+          fontFamily: '"Barlow Condensed", sans-serif',
+          fontWeight: 700,
+          fontSize: '0.72rem',
+          color: colors.primary,
+          lineHeight: 1.2,
+          letterSpacing: '0.03em',
+        }}
+        noWrap
+      >
+        {primaryLabel}
+      </Typography>
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+          fontSize: '0.72rem',
+          display: 'block',
+          mt: 0.25,
+          lineHeight: 1.2,
+        }}
+        noWrap
+      >
+        {match.stage}
+      </Typography>
+    </Box>
+  );
 }
 
 const FORECAST_EDIT_WINDOW_MS = 60 * 60 * 1000;
@@ -107,18 +230,40 @@ function shouldShowParticipantForecasts(match: UiMatch, now: number) {
   return getMsUntilMatchStart(match.date, now) < FORECAST_EDIT_WINDOW_MS;
 }
 
-function TeamAvatar({ name, badge }: { name: string; badge?: string | null }) {
+function TeamAvatar({ name, badge, isCompleted = false }: { name: string; badge?: string | null; isCompleted?: boolean }) {
+  const hasBadge = Boolean(badge);
+  const showEffects = hasBadge && !isCompleted;
+
   return (
     <Avatar
       src={badge || undefined}
+      imgProps={{
+        style: {
+          objectFit: 'contain',
+          padding: hasBadge ? 3 : 0,
+        },
+      }}
       sx={{
-        width: 40,
-        height: 40,
+        width: 48,
+        height: 48,
+        flexShrink: 0,
         bgcolor: '#1a2240',
         fontFamily: '"Barlow Condensed", sans-serif',
         fontWeight: 800,
-        fontSize: '0.8rem',
-        border: '1px solid rgba(255,255,255,0.1)',
+        fontSize: '0.85rem',
+        border: showEffects ? '1px solid rgba(196,241,53,0.35)' : '1px solid rgba(255,255,255,0.12)',
+        boxShadow: showEffects ? '0 0 8px rgba(196,241,53,0.14)' : 'none',
+        ...(showEffects && {
+          animation: 'teamBadgeGlow 2.8s ease-in-out infinite',
+          '@keyframes teamBadgeGlow': {
+            '0%, 100%': {
+              boxShadow: '0 0 6px rgba(196,241,53,0.1)',
+            },
+            '50%': {
+              boxShadow: '0 0 12px rgba(196,241,53,0.24)',
+            },
+          },
+        }),
       }}
     >
       {name.slice(0, 3).toUpperCase()}
@@ -183,18 +328,13 @@ function MatchCard({
   return (
     <Box sx={{ bgcolor: '#0d1120', border: prediction ? '1px solid rgba(196,241,53,0.2)' : '1px solid rgba(26,34,64,0.8)', borderRadius: 1.5, p: 2.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2, gap: 1 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-          <Chip icon={<SoccerIcon sx={{ fontSize: '0.75rem !important' }} />} label={isCompleted ? 'Завершён' : match.tournament} size="small" color={isCompleted ? 'success' : 'primary'} />
-          <Chip label={match.stage} size="small" sx={{ bgcolor: 'transparent', border: '1px solid rgba(90,106,138,0.35)', color: 'text.secondary', fontSize: '0.65rem', height: 20, alignSelf: 'flex-start' }} />
-        </Box>
-        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.72rem', flexShrink: 0 }}>
-          {formatDate(match.date)}
-        </Typography>
+        <MatchTournamentInfo match={match} isCompleted={isCompleted} />
+        <MatchStartTime dateString={match.date} isCompleted={isCompleted} />
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75 }}>
-          <TeamAvatar name={match.homeTeam} badge={match.homeBadge} />
+          <TeamAvatar name={match.homeTeam} badge={match.homeBadge} isCompleted={isCompleted} />
           <Typography variant="body2" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, fontSize: '0.95rem', textAlign: 'center' }}>{match.homeTeam}</Typography>
         </Box>
 
@@ -208,7 +348,7 @@ function MatchCard({
         </Box>
 
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75 }}>
-          <TeamAvatar name={match.awayTeam} badge={match.awayBadge} />
+          <TeamAvatar name={match.awayTeam} badge={match.awayBadge} isCompleted={isCompleted} />
           <Typography variant="body2" sx={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, fontSize: '0.95rem', textAlign: 'center' }}>{match.awayTeam}</Typography>
         </Box>
       </Box>

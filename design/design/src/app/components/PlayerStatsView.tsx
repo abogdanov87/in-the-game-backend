@@ -14,7 +14,7 @@ import {
   SportsScore as TournamentIcon,
 } from '@mui/icons-material';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, Cell,
 } from 'recharts';
@@ -590,25 +590,15 @@ export function PlayerStatsView({ player, rank, profile, onProfileChange, onPlay
               </Box>
             ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={matchBlockData} margin={{ top: 5, right: 5, bottom: 0, left: -24 }}>
-                <defs>
-                  <linearGradient id={`gP${player.id}${selectedTournamentId ?? ''}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#c4f135" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#c4f135" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id={`gA${player.id}${selectedTournamentId ?? ''}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+              <LineChart data={matchBlockData} margin={{ top: 5, right: 5, bottom: 0, left: -24 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,34,64,0.8)" vertical={false} />
                 <XAxis dataKey="label" tick={{ fill: '#5a6a8a', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="l" tick={{ fill: '#5a6a8a', fontSize: 10, fontFamily: '"JetBrains Mono", monospace' }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="r" orientation="right" tick={{ fill: '#5a6a8a', fontSize: 10, fontFamily: '"JetBrains Mono", monospace' }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                <YAxis yAxisId="points" domain={[0, 'auto']} tick={{ fill: '#5a6a8a', fontSize: 10, fontFamily: '"JetBrains Mono", monospace' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="accuracy" orientation="right" domain={[0, 100]} tick={{ fill: '#5a6a8a', fontSize: 10, fontFamily: '"JetBrains Mono", monospace' }} axisLine={false} tickLine={false} />
                 <RechartsTooltip content={<ChartTooltip />} />
-                <Area yAxisId="l" type="monotone" dataKey="points"   stroke="#c4f135" strokeWidth={2} fill={`url(#gP${player.id}${selectedTournamentId ?? ''})`} dot={{ fill: '#c4f135', r: 3, strokeWidth: 0 }} name="Очки" />
-                <Area yAxisId="r" type="monotone" dataKey="accuracy" stroke="#38bdf8" strokeWidth={2} fill={`url(#gA${player.id}${selectedTournamentId ?? ''})`} dot={{ fill: '#38bdf8', r: 3, strokeWidth: 0 }} name="Точность" />
-              </AreaChart>
+                <Line yAxisId="points" type="linear" dataKey="points" stroke="#c4f135" strokeWidth={2} dot={{ fill: '#c4f135', r: 3, strokeWidth: 0 }} activeDot={{ r: 5 }} name="Очки" />
+                <Line yAxisId="accuracy" type="linear" dataKey="accuracy" stroke="#38bdf8" strokeWidth={2} dot={{ fill: '#38bdf8', r: 3, strokeWidth: 0 }} activeDot={{ r: 5 }} name="Точность" />
+              </LineChart>
             </ResponsiveContainer>
             )}
           </Box>

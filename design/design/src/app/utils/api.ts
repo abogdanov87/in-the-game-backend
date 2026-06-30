@@ -443,26 +443,33 @@ export interface MatchBlockStats {
   accuracy: number;
 }
 
-export function aggregateMatchBlocks(forecasts: MatchForecastHistory[], blockSize = 10): MatchBlockStats[] {
-  if (!forecasts.length) return [];
+export function sortMatchForecasts(forecasts: MatchForecastHistory[]): MatchForecastHistory[] {
+  return [...forecasts].sort((a, b) => {
+    const byDate = new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+    if (byDate !== 0) return byDate;
+    return a.match_id - b.match_id;
+  });
+}
 
-  const sorted = [...forecasts].sort(
-    (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime(),
-  );
+function isForecastCorrect(item: MatchForecastHistory): boolean {
+  return item.exact_result + item.goals_difference + item.match_result > 0;
+}
+
+export function aggregateMatchBlocks(forecasts: MatchForecastHistory[], blockSize = 10): MatchBlockStats[] {
+  const sorted = sortMatchForecasts(forecasts);
+  if (!sorted.length) return [];
 
   const blocks: MatchBlockStats[] = [];
   for (let i = 0; i < sorted.length; i += blockSize) {
     const chunk = sorted.slice(i, i + blockSize);
     const points = chunk.reduce((sum, item) => sum + item.points, 0);
-    const correct = chunk.filter(
-      (item) => item.exact_result + item.goals_difference + item.match_result > 0,
-    ).length;
+    const correct = chunk.filter(isForecastCorrect).length;
     const from = i + 1;
     const to = i + chunk.length;
     blocks.push({
       label: `${from}–${to}`,
       points: Math.round(points * 10) / 10,
-      accuracy: chunk.length ? Math.round((correct / chunk.length) * 100) : 0,
+      accuracy: chunk.length ? Math.round((correct / chunk.length) * 1000) / 10 : 0,
     });
   }
   return blocks;
