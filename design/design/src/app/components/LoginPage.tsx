@@ -4,6 +4,7 @@ import { Box, Button, Typography, Alert, TextField } from '@mui/material';
 import { ArrowForward as ArrowIcon, MailOutline as MailIcon } from '@mui/icons-material';
 import { fetchMe, loginWithCode, requestLoginCode } from '../utils/api';
 import { mergeUserIntoProfile } from '../utils/userProfile';
+import iconUrl from '../../assets/Icon.svg';
 
 const CODE_LENGTH = 6;
 
@@ -150,31 +151,35 @@ export function LoginPage() {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 72,
-              height: 72,
-              borderRadius: '50%',
-              bgcolor: 'rgba(196, 241, 53, 0.1)',
-              border: '1px solid rgba(196, 241, 53, 0.25)',
-              mb: 3,
-              boxShadow: '0 0 32px rgba(196, 241, 53, 0.15)',
-            }}
-          >
-            <Typography sx={{ fontSize: '2rem', lineHeight: 1 }}>⚽</Typography>
-          </Box>
-          <Typography
-            variant="h2"
-            sx={{
-              fontFamily: '"Barlow Condensed", sans-serif',
-              fontWeight: 800,
-              fontSize: { xs: '2.5rem', md: '3rem' },
-              color: 'text.primary',
-              letterSpacing: '0.06em',
-              lineHeight: 1,
+              gap: 1.5,
               mb: 1,
             }}
           >
-            FOOTBET
-          </Typography>
+            <Box
+              component="img"
+              src={iconUrl}
+              alt=""
+              sx={{
+                width: { xs: 40, md: 48 },
+                height: { xs: 40, md: 48 },
+                flexShrink: 0,
+                display: 'block',
+              }}
+            />
+            <Typography
+              variant="h2"
+              sx={{
+                fontFamily: '"Barlow Condensed", sans-serif',
+                fontWeight: 800,
+                fontSize: { xs: '2.5rem', md: '3rem' },
+                color: 'text.primary',
+                letterSpacing: '0.06em',
+                lineHeight: 1,
+              }}
+            >
+              FOOTBET
+            </Typography>
+          </Box>
           <Typography
             variant="body2"
             sx={{ color: 'text.secondary', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.7rem' }}

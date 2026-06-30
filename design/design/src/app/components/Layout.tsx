@@ -31,6 +31,7 @@ import {
 import { loadUserProfile, resolveAvatarProfile, mergeUserIntoProfile, saveUserProfile, avatarSourceFromProfile, type UserProfile } from '../utils/userProfile';
 import { clearTokens, fetchMe } from '../utils/api';
 import { UserAvatarDisplay } from './PlayerStatsView';
+import iconUrl from '../../assets/Icon.svg';
 
 const drawerWidth = 260;
 
@@ -53,8 +54,21 @@ function UserAvatar({ profile, size = 32 }: { profile: UserProfile; size?: numbe
 }
 
 function BrandTitle({ compact = false }: { compact?: boolean }) {
+  const iconSize = compact ? 24 : 32;
+
   return (
-    <Box sx={{ minWidth: 0, flexShrink: 0 }}>
+    <Box sx={{ minWidth: 0, flexShrink: 0, display: 'flex', alignItems: 'center', gap: compact ? 0.75 : 1 }}>
+      <Box
+        component="img"
+        src={iconUrl}
+        alt=""
+        sx={{
+          width: iconSize,
+          height: iconSize,
+          flexShrink: 0,
+          display: 'block',
+        }}
+      />
       <Typography
         component="div"
         sx={{
