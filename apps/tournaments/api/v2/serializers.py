@@ -287,7 +287,7 @@ class TournamentTableSerializer(BulkSerializerMixin, serializers.ModelSerializer
     def to_representation(self, instance):
         response = super().to_representation(instance)
         participants = ParticipantTableSerializer(
-            instance.tournament_participant,
+            instance.tournament_participant.filter(active=True),
             many=True
         ).data
         sorted_participants = sorted(
@@ -488,14 +488,24 @@ class ParticipantSerializer(serializers.ModelSerializer):
 class ParticipantTableSerializer(serializers.ModelSerializer):
     user = UserShortSerializer()
     score = serializers.SerializerMethodField()
+    winner = serializers.SerializerMethodField()
 
     class Meta:
         model = Participant
         fields = (
             'id',
             'user',
+            'active',
             'score',
+            'winner',
         )
+
+    def get_winner(self, obj):
+        qs = ForecastWinner.objects.filter(
+            tournament=obj.tournament_id,
+            user=obj.user_id,
+        ).order_by('winner_type')
+        return ForecastWinnerSerializer(qs, many=True).data
 
     def get_score(self, obj):
         #calculate score for all tournaments

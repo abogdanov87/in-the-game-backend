@@ -38,7 +38,9 @@ export interface ParticipantScore {
 export interface TournamentParticipant {
   id: number;
   user: ApiUser;
+  active?: boolean;
   score: ParticipantScore;
+  winner?: TournamentFavorite[];
 }
 
 export interface TournamentRule {
@@ -133,6 +135,7 @@ export interface Player {
   correctOutcomes: number;
   correctDiff: number;
   tournamentTitle?: string;
+  favorites?: TournamentFavorite[];
 }
 
 export interface TournamentFavorite {
@@ -551,6 +554,7 @@ export function participantToPlayer(participant: TournamentParticipant, tourname
     correctOutcomes: score.match_result,
     correctDiff: score.goals_difference,
     tournamentTitle,
+    favorites: participant.winner ?? [],
   };
 }
 
