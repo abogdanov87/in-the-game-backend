@@ -211,10 +211,59 @@ export function clearTokens() {
   localStorage.removeItem('isAuthenticated');
 }
 
-async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
+function getRefreshToken() {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+const REFRESH_URL = '/api/token/refresh/';
+const AUTH_URLS_WITHOUT_REFRESH = ['/api/v1/auth/', '/api/v1/mail/', REFRESH_URL];
+
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshAccessToken(): Promise<string> {
+  const refresh = getRefreshToken();
+  if (!refresh) {
+    clearTokens();
+    throw new Error('Сессия истекла');
+  }
+
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const response = await fetch(REFRESH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh }),
+      });
+
+      if (!response.ok) {
+        clearTokens();
+        throw new Error('Сессия истекла');
+      }
+
+      const data = await response.json() as { access: string; refresh?: string };
+      localStorage.setItem(ACCESS_TOKEN_KEY, data.access);
+      if (data.refresh) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh);
+      }
+      localStorage.setItem('isAuthenticated', 'true');
+      return data.access;
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+
+  return refreshPromise;
+}
+
+function shouldAttemptTokenRefresh(url: string, status: number, retried: boolean) {
+  if (status !== 401 || retried || !getRefreshToken()) return false;
+  return !AUTH_URLS_WITHOUT_REFRESH.some((authUrl) => url.includes(authUrl));
+}
+
+async function fetchWithAuth(url: string, init: RequestInit = {}, retried = false): Promise<Response> {
   const token = getAccessToken();
   const headers = new Headers(init.headers);
-  if (!headers.has('Content-Type') && init.body) {
+  if (!headers.has('Content-Type') && init.body && !(init.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
   if (token) {
@@ -222,6 +271,16 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
   }
 
   const response = await fetch(url, { ...init, headers });
+  if (!shouldAttemptTokenRefresh(url, response.status, retried)) {
+    return response;
+  }
+
+  await refreshAccessToken();
+  return fetchWithAuth(url, init, true);
+}
+
+async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetchWithAuth(url, init);
   if (!response.ok) {
     let message = response.statusText;
     try {
@@ -281,12 +340,6 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
 }
 
 export async function updateMe(payload: UpdateMePayload): Promise<ApiUser> {
-  const token = getAccessToken();
-  const headers = new Headers();
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
   if (payload.avatarDataUrl) {
     const form = new FormData();
     if (payload.nickname !== undefined) form.append('nickname', payload.nickname);
@@ -295,7 +348,7 @@ export async function updateMe(payload: UpdateMePayload): Promise<ApiUser> {
     if (payload.avatar_emoji !== undefined) form.append('avatar_emoji', payload.avatar_emoji);
     if (payload.clear_avatar) form.append('clear_avatar', 'true');
     form.append('avatar', dataUrlToBlob(payload.avatarDataUrl), 'avatar.jpg');
-    const response = await fetch('/api/v1/me/', { method: 'PATCH', headers, body: form });
+    const response = await fetchWithAuth('/api/v1/me/', { method: 'PATCH', body: form });
     return parseApiResponse<ApiUser>(response);
   }
 
